@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+.env
+.env.docker
+.env.*
+!.env.example
+!.env.docker.example
+.python-version
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+*.log
+docker-compose.override.yml
+postgres-data/
+
+# Проект
+backend/app/data/districts/
+scripts/cache/
+logs/
+*.log
+instance/
+*.png
+
+# Тесты
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Дистрибутивы
+dist/
+build/
+*.egg-info/

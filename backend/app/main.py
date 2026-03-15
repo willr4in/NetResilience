@@ -1,0 +1,43 @@
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
+from .config import settings
+from .database import init_db
+from .routes import users_router, scenarios_router, history_router, graph_router
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+app = FastAPI(
+    title=settings.APP_NAME, 
+    debug=settings.DEBUG, 
+    docs_url="/api/docs", 
+    redoc_url="/api/redoc",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware, 
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(users_router)
+app.include_router(scenarios_router)
+app.include_router(history_router)
+app.include_router(graph_router)
+
+@app.get("/")
+def root():
+    return {
+        "message": "Welcome to the Network Resilience API",
+        "docs": "/api/docs"
+    }
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

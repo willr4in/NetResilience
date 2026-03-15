@@ -1,0 +1,38 @@
+from pydantic import BaseModel, Field
+from typing import List, Optional, Any, Dict
+from datetime import datetime
+from .graph import MetricResponse
+
+class ScenarioBase(BaseModel):
+    name: str = Field(..., min_length=3, max_length=100, description="Scenario name")
+    description: Optional[str] = Field(None, max_length=500, description="Scenario description")
+    district: str = Field(..., description="District name")
+
+    removed_nodes: List[str] = Field(default_factory=list, description="List of removed nodes")
+    removed_edges: List[List[str]] = Field(default_factory=list, description="List of removed edges")
+    added_nodes: List[Dict[str, Any]] = Field(default_factory=list, description="List of added nodes")
+    added_edges: List[List[str]] = Field(default_factory=list, description="List of added edges")
+
+class ScenarioCreate(ScenarioBase):
+    pass
+
+class ScenarioUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=3, max_length=100, description="Scenario name")
+    description: Optional[str] = Field(None, max_length=500, description="Scenario description")
+
+class ScenarioResponse(ScenarioBase):
+    id: int = Field(..., description="ID of the scenario")
+    user_id: Optional[int] = Field(None)
+    metrics: Optional[MetricResponse] = Field(None)
+    hits: int = Field(..., description="Number of times the scenario was used")
+    created_at: datetime = Field(..., description="Timestamp of when the scenario was created")
+    last_used_at: Optional[datetime] = Field(None, description="Timestamp of when the scenario was last used")
+
+    model_config = {"from_attributes": True}
+
+class ScenarioList(BaseModel):
+    items: List[ScenarioResponse] = Field(default_factory=list, description="List of scenarios")
+    total: int = Field(0, description="Total number of scenarios")
+    page: int = Field(1, description="Current page number")
+    size: int = Field(10, description="Number of scenarios per page")
+    pages: int = Field(1, description="Total number of pages")

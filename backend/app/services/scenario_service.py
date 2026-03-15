@@ -1,0 +1,131 @@
+from sqlalchemy.orm import Session
+from typing import List
+from ..repositories.scenario_repository import ScenarioRepository
+from ..repositories.history_repository import HistoryRepository
+from ..schemas.scenario import ScenarioCreate, ScenarioResponse, ScenarioUpdate, ScenarioList
+from ..schemas.graph import GraphChanges
+from ..schemas.history import HistoryCreate, ActionType
+from ..services.graph_service import analyze
+from fastapi import HTTPException, status
+import logging
+import math
+
+logger = logging.getLogger(__name__)
+
+
+class ScenarioService:
+    def __init__(self, db: Session):
+        self.scenario_repository = ScenarioRepository(db)
+        self.history_repository = HistoryRepository(db)
+
+    def save_scenario(self, user_id: int, scenario_data: ScenarioCreate) -> ScenarioResponse:
+        changes = GraphChanges(
+            district=scenario_data.district,
+            removed_nodes=scenario_data.removed_nodes,
+            removed_edges=scenario_data.removed_edges,
+            added_nodes=scenario_data.added_nodes,
+            added_edges=scenario_data.added_edges
+        )
+
+        try:
+            analysis = analyze(changes)
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Graph for district '{scenario_data.district}' not found"
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e)
+            )
+
+        scenario = self.scenario_repository.create_scenario(
+            user_id=user_id,
+            scenario_data=scenario_data,
+            metrics=analysis.metrics.model_dump()
+        )
+
+        self.history_repository.create_history(
+            user_id=user_id,
+            history_data=HistoryCreate(
+                scenario_id=scenario.id,
+                action=ActionType.SAVE,
+                details={"district": scenario_data.district},
+                calculation_time_ms=analysis.calculation_time_ms
+            )
+        )
+
+        logger.info(f"Scenario saved: id={scenario.id}, user_id={user_id}")
+        return ScenarioResponse.model_validate(scenario)
+
+    def get_scenario(self, scenario_id: int, user_id: int) -> ScenarioResponse:
+        scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
+        if not scenario:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+
+        self.scenario_repository.increment_hits(scenario_id)
+
+        self.history_repository.create_history(
+            user_id=user_id,
+            history_data=HistoryCreate(
+                scenario_id=scenario_id,
+                action=ActionType.VIEW,
+                details={"scenario_name": scenario.name}
+            )
+        )
+
+        logger.info(f"Scenario viewed: id={scenario_id}, user_id={user_id}")
+        return ScenarioResponse.model_validate(scenario)
+
+    def get_user_scenarios(self, user_id: int, page: int = 1, size: int = 10) -> ScenarioList:
+        scenarios = self.scenario_repository.get_scenarios_by_user_id(user_id)
+        total = len(scenarios)
+        pages = math.ceil(total / size) if total > 0 else 1
+
+        start = (page - 1) * size
+        end = start + size
+        paginated = scenarios[start:end]
+
+        logger.info(f"Retrieved scenarios for user_id={user_id}: total={total}")
+        return ScenarioList(
+            items=[ScenarioResponse.model_validate(s) for s in paginated],
+            total=total,
+            page=page,
+            size=size,
+            pages=pages
+        )
+
+    def update_scenario(self, scenario_id: int, user_id: int, update_data: ScenarioUpdate) -> ScenarioResponse:
+        scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
+        if not scenario:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+
+        if scenario.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your scenario")
+
+        updated = self.scenario_repository.update_scenario(scenario_id, update_data)
+        logger.info(f"Scenario updated: id={scenario_id}, user_id={user_id}")
+        return ScenarioResponse.model_validate(updated)
+
+    def delete_scenario(self, scenario_id: int, user_id: int) -> dict:
+        scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
+        if not scenario:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+
+        if scenario.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your scenario")
+
+        self.scenario_repository.delete_scenario(scenario_id)
+
+        self.history_repository.create_history(
+            user_id=user_id,
+            history_data=HistoryCreate(
+                scenario_id=None,
+                action=ActionType.DELETE,
+                details={"deleted_scenario_name": scenario.name}
+            )
+        )
+
+        logger.info(f"Scenario deleted: id={scenario_id}, user_id={user_id}")
+        return {"message": f"Scenario '{scenario.name}' deleted successfully"}
