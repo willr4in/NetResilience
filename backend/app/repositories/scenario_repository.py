@@ -19,9 +19,17 @@ class ScenarioRepository:
     def get_scenario_by_id(self, scenario_id: int) -> Optional[Scenario]:
         return self.db.query(Scenario).filter(Scenario.id == scenario_id).first()
     
-    def get_scenarios_by_user_id(self, user_id: int) -> List[Scenario]:
-        return self.db.query(Scenario).filter(Scenario.user_id == user_id).all()
-    
+    def get_scenarios_by_user_id(self, user_id: int, page: int = 1, size: int = 10):
+        total = self.db.query(Scenario).filter(Scenario.user_id == user_id).count()
+        scenarios = (
+            self.db.query(Scenario)
+            .filter(Scenario.user_id == user_id)
+            .offset((page - 1) * size)
+            .limit(size)
+            .all()
+        )
+        return scenarios, total
+        
     def get_scenarios_by_district(self, district: str) -> List[Scenario]:
         return self.db.query(Scenario).filter(Scenario.district == district).all()
     

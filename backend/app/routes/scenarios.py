@@ -5,7 +5,7 @@ from ..services.scenario_service import ScenarioService
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 
-TEST_USER_ID = 1
+TEST_USER_ID = 3
 
 @router.get("", response_model=ScenarioList, status_code=status.HTTP_200_OK)
 def get_all_scenarios(scenario_service: ScenarioService = Depends(get_scenario_service)):

@@ -12,6 +12,9 @@ from ..algorithms.resilience import calculate_resilience
 
 logger = logging.getLogger(__name__)
 
+def district_exists(district: str) -> bool:
+    path = Path(settings.DISTRICTS_DATA_PATH) / f"{district.lower()}.json"
+    return path.exists()
 
 def load_graph(district: str) -> tuple[GraphSchema, nx.Graph]:
     path = Path(settings.DISTRICTS_DATA_PATH) / f"{district.lower()}.json"

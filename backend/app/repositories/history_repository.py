@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from ..models.history import History
 from ..schemas.history import HistoryCreate
@@ -15,13 +15,33 @@ class HistoryRepository:
         return history
     
     def get_history_by_id(self, history_id: int) -> Optional[History]:
-        return self.db.query(History).filter(History.id == history_id).first()
+        return self.db.query(History).options(
+            joinedload(History.scenario)
+        ).filter(History.id == history_id).first()
     
-    def get_history_by_user_id(self, user_id: int) -> List[History]:
-        return self.db.query(History).filter(History.user_id == user_id).all()
-    
-    def get_history_by_scenario_id(self, scenario_id: int) -> List[History]:
-        return self.db.query(History).filter(History.scenario_id == scenario_id).all()
+    def get_history_by_user_id(self, user_id: int, page: int = 1, size: int = 10):
+        total = self.db.query(History).filter(History.user_id == user_id).count()
+        history = (
+            self.db.query(History)
+            .options(joinedload(History.scenario))
+            .filter(History.user_id == user_id)
+            .offset((page - 1) * size)
+            .limit(size)
+            .all()
+        )
+        return history, total
+
+    def get_history_by_scenario_id(self, scenario_id: int, page: int = 1, size: int = 10):
+        total = self.db.query(History).filter(History.scenario_id == scenario_id).count()
+        history = (
+            self.db.query(History)
+            .options(joinedload(History.scenario))
+            .filter(History.scenario_id == scenario_id)
+            .offset((page - 1) * size)
+            .limit(size)
+            .all()
+        )
+        return history, total
     
     def delete_history(self, history_id: int) -> bool:
         history = self.get_history_by_id(history_id)
@@ -30,4 +50,3 @@ class HistoryRepository:
         self.db.delete(history)
         self.db.commit()
         return True
-    

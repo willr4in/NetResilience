@@ -5,7 +5,7 @@ from ..repositories.history_repository import HistoryRepository
 from ..schemas.scenario import ScenarioCreate, ScenarioResponse, ScenarioUpdate, ScenarioList
 from ..schemas.graph import GraphChanges
 from ..schemas.history import HistoryCreate, ActionType
-from ..services.graph_service import analyze
+from ..services.graph_service import analyze, district_exists
 from fastapi import HTTPException, status
 import logging
 import math
@@ -19,6 +19,12 @@ class ScenarioService:
         self.history_repository = HistoryRepository(db)
 
     def save_scenario(self, user_id: int, scenario_data: ScenarioCreate) -> ScenarioResponse:
+        if not district_exists(scenario_data.district):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Graph for district '{scenario_data.district}' not found"
+            )
+
         changes = GraphChanges(
             district=scenario_data.district,
             removed_nodes=scenario_data.removed_nodes,
@@ -79,17 +85,12 @@ class ScenarioService:
         return ScenarioResponse.model_validate(scenario)
 
     def get_user_scenarios(self, user_id: int, page: int = 1, size: int = 10) -> ScenarioList:
-        scenarios = self.scenario_repository.get_scenarios_by_user_id(user_id)
-        total = len(scenarios)
+        scenarios, total = self.scenario_repository.get_scenarios_by_user_id(user_id, page, size)
         pages = math.ceil(total / size) if total > 0 else 1
-
-        start = (page - 1) * size
-        end = start + size
-        paginated = scenarios[start:end]
 
         logger.info(f"Retrieved scenarios for user_id={user_id}: total={total}")
         return ScenarioList(
-            items=[ScenarioResponse.model_validate(s) for s in paginated],
+            items=[ScenarioResponse.model_validate(s) for s in scenarios],
             total=total,
             page=page,
             size=size,

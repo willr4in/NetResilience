@@ -14,33 +14,44 @@ class HistoryService:
         self.history_repository = HistoryRepository(db)
 
     def get_user_history(self, user_id: int, page: int = 1, size: int = 10) -> HistoryList:
-        """
-        Возвращает историю действий пользователя с пагинацией.
-        """
-        history = self.history_repository.get_history_by_user_id(user_id)
-        total = len(history)
+        history, total = self.history_repository.get_history_by_user_id(user_id, page, size)
         pages = math.ceil(total / size) if total > 0 else 1
 
-        start = (page - 1) * size
-        end = start + size
-        paginated = history[start:end]
+        items = []
+        for h in history:
+            h_dict = {
+                "id": h.id,
+                "user_id": h.user_id,
+                "scenario_id": h.scenario_id,
+                "action": h.action,
+                "details": h.details,
+                "calculation_time_ms": h.calculation_time_ms,
+                "created_at": h.created_at,
+                "scenario_name": h.scenario.name if h.scenario else None
+            }
+            items.append(HistoryResponse(**h_dict))
 
-        logger.info(f"Retrieved history for user_id={user_id}: total={total}")
-        return HistoryList(
-            items=[HistoryResponse.model_validate(h) for h in paginated],
-            total=total,
-            page=page,
-            size=size,
-            pages=pages
-        )
+        return HistoryList(items=items, total=total, page=page, size=size, pages=pages)
 
-    def get_scenario_history(self, scenario_id: int) -> List[HistoryResponse]:
-        """
-        Возвращает историю действий по конкретному сценарию.
-        """
-        history = self.history_repository.get_history_by_scenario_id(scenario_id)
-        logger.info(f"Retrieved history for scenario_id={scenario_id}: total={len(history)}")
-        return [HistoryResponse.model_validate(h) for h in history]
+    def get_scenario_history(self, scenario_id: int, page: int = 1, size: int = 10) -> HistoryList:
+        history, total = self.history_repository.get_history_by_scenario_id(scenario_id, page, size)
+        pages = math.ceil(total / size) if total > 0 else 1
+
+        items = []
+        for h in history:
+            h_dict = {
+                "id": h.id,
+                "user_id": h.user_id,
+                "scenario_id": h.scenario_id,
+                "action": h.action,
+                "details": h.details,
+                "calculation_time_ms": h.calculation_time_ms,
+                "created_at": h.created_at,
+                "scenario_name": h.scenario.name if h.scenario else None
+            }
+            items.append(HistoryResponse(**h_dict))
+
+        return HistoryList(items=items, total=total, page=page, size=size, pages=pages)
 
     def delete_history_record(self, history_id: int) -> dict:
         """
