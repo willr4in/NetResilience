@@ -8,7 +8,12 @@ class UserRepository:
         self.db = db
 
     def create_user(self, user_data: UserCreate) -> User:
-        user = User(**user_data.model_dump())
+        user = User(
+            name=user_data.name,
+            surname=user_data.surname,
+            email=user_data.email,
+            hashed_password=user_data.password  
+        )
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)

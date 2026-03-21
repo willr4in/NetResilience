@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .database import init_db
-from .routes import users_router, scenarios_router, history_router, graph_router
+from .models import User, Scenario, History, ActionType, RefreshToken
+from .routes import users_router, scenarios_router, history_router, graph_router, auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +31,7 @@ app.include_router(users_router)
 app.include_router(scenarios_router)
 app.include_router(history_router)
 app.include_router(graph_router)
+app.include_router(auth_router)
 
 @app.get("/")
 def root():

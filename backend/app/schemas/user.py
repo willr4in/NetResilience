@@ -7,7 +7,7 @@ class UserBase(BaseModel):
     email: EmailStr = Field(..., description="Email address")
 
 class UserCreate(UserBase):
-    pass
+    password: str = Field(..., min_length=8, max_length=100, description="Password")
 
 class UserResponse(UserBase):
     id: int = Field(..., description="ID of the user")

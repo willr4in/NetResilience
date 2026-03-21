@@ -1,14 +1,17 @@
 from .user_service import UserService
 from .scenario_service import ScenarioService
 from .history_service import HistoryService
-from .graph_service import analyze, load_graph, apply_changes, run_analysis
+from .auth_service import AuthService
+from .graph_service import analyze, load_graph, apply_changes, run_analysis, district_exists
 
 __all__ = [
     "UserService",
-    "ScenarioService", 
+    "ScenarioService",
     "HistoryService",
+    "AuthService",
     "analyze",
     "load_graph",
     "apply_changes",
-    "run_analysis"
+    "run_analysis",
+    "district_exists"
 ]
