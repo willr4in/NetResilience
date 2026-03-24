@@ -8,7 +8,13 @@ class HistoryRepository:
         self.db = db
     
     def create_history(self, user_id: int, history_data: HistoryCreate) -> History:
-        history = History(user_id=user_id, **history_data.model_dump())
+        history = History(
+            user_id=user_id,
+            scenario_id=history_data.scenario_id,
+            action=history_data.action,
+            details=history_data.details,
+            calculation_time_ms=history_data.calculation_time_ms
+        )
         self.db.add(history)
         self.db.commit()
         self.db.refresh(history)

@@ -8,7 +8,17 @@ class ScenarioRepository:
         self.db = db
     
     def create_scenario(self, user_id: int, scenario_data: ScenarioCreate, metrics: dict = None) -> Scenario:
-        scenario = Scenario(**scenario_data.model_dump(), user_id=user_id)
+        scenario = Scenario(
+            user_id=user_id,
+            name=scenario_data.name,
+            description=scenario_data.description,
+            district=scenario_data.district,
+            removed_nodes=scenario_data.removed_nodes,
+            removed_edges=scenario_data.removed_edges,
+            added_nodes=scenario_data.added_nodes,
+            added_edges=scenario_data.added_edges,
+            hits=0
+        )
         if metrics:
             scenario.metrics = metrics
         self.db.add(scenario)
