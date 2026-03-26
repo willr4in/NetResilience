@@ -8,8 +8,9 @@ from .routes import users_router, scenarios_router, history_router, graph_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    yield
+    pass
+    # init_db()
+    # yield
 
 app = FastAPI(
     title=settings.APP_NAME, 
