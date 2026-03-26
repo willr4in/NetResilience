@@ -42,3 +42,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Alembic 
+backend/alembic/__pycache__/
+backend/alembic/versions/__pycache__/
