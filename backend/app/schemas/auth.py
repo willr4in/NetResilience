@@ -2,14 +2,34 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 
 class RegisterRequest(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100, example="John", description="First name of the user")
-    surname: str = Field(..., min_length=2, max_length=100, example="Doe", description="Last name of the user")
-    email: EmailStr = Field(..., example="john.doe@example.com", description="Email address of the user")
-    password: str = Field(..., min_length=8, max_length=100, example="strongpassword123", description="Password of the user")
+    name: str = Field(..., min_length=2, max_length=100, description="First name of the user")
+    surname: str = Field(..., min_length=2, max_length=100, description="Last name of the user")
+    email: EmailStr = Field(..., description="Email address of the user")
+    password: str = Field(..., min_length=8, max_length=100, description="Password of the user")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "John",
+                "surname": "Doe",
+                "email": "john.doe@example.com",
+                "password": "strongpassword123"
+            }
+        }
+    }
 
 class LoginRequest(BaseModel):
-    email: EmailStr = Field(..., example="john.doe@example.com", description="Email address of the user")
-    password: str = Field(..., min_length=8, max_length=100, example="strongpassword123", description="Password of the user")
+    email: EmailStr = Field(..., description="Email address of the user")
+    password: str = Field(..., min_length=8, max_length=100, description="Password of the user")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "email": "john.doe@example.com",
+                "password": "strongpassword123"
+            }
+        }
+    }
 
 class TokenResponse(BaseModel):
     access_token: str = Field(..., description="Access token for the user")

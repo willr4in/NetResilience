@@ -31,9 +31,11 @@ def average_shortest_path(G: nx.Graph, weight: str = "weight") -> Optional[float
         return None
     
     if not nx.is_connected(G):
-        logger.warning(f"Graph is not connected. Calculating on largest component "
-            f"({len(largest)}/{len(G.nodes())} nodes).")
-        largest = max(nx.connected_components(G), key=len)
+        largest = max(nx.connected_components(G), key=len)  # ← сначала определили
+        logger.warning(
+            f"Graph is not connected. Calculating on largest component "
+            f"({len(largest)}/{len(G.nodes())} nodes)."
+        )
         G = G.subgraph(largest).copy()
     
     try:
