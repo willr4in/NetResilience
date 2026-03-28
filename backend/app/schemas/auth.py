@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 
 class RegisterRequest(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100, description="First name of the user")
-    surname: str = Field(..., min_length=2, max_length=100, description="Last name of the user")
+    name: str = Field(..., min_length=2, max_length=30, description="First name of the user")
+    surname: str = Field(..., min_length=2, max_length=30, description="Last name of the user")
     email: EmailStr = Field(..., description="Email address of the user")
     password: str = Field(..., min_length=8, max_length=100, description="Password of the user")
     
