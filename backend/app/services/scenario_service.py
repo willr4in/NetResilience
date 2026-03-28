@@ -69,6 +69,9 @@ class ScenarioService:
         scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
         if not scenario:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+        
+        if scenario.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your scenario")
 
         self.scenario_repository.increment_hits(scenario_id)
 
