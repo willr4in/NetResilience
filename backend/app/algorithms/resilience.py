@@ -31,7 +31,7 @@ def average_shortest_path(G: nx.Graph, weight: str = "weight") -> Optional[float
         return None
     
     if not nx.is_connected(G):
-        largest = max(nx.connected_components(G), key=len)  # ← сначала определили
+        largest = max(nx.connected_components(G), key=len)  
         logger.warning(
             f"Graph is not connected. Calculating on largest component "
             f"({len(largest)}/{len(G.nodes())} nodes)."
@@ -82,8 +82,8 @@ def top_nodes_change(
     return {
         "top_before": list(top_before),
         "top_after": list(top_after),
-        "new_critical": list(top_after - top_before),   # новые критические узлы
-        "no_longer_critical": list(top_before - top_after)  # перестали быть критическими
+        "new_critical": list(top_after - top_before),  
+        "no_longer_critical": list(top_before - top_after)  
     }
 
 
@@ -108,8 +108,6 @@ def calculate_resilience(
     avg_path = average_shortest_path(G, weight=weight)
     concentration = betweenness_concentration(centrality_metrics.get("betweenness", {}))
 
-    # Итоговый score от 0 до 1
-    # connected: 0.4 веса, component_ratio: 0.3, concentration (инверсия): 0.3
     resilience_score = round(
         0.4 * (1.0 if connected else 0.0) +
         0.3 * component_ratio +
@@ -126,7 +124,6 @@ def calculate_resilience(
         "comparison": None
     }
 
-    # Если передали оригинал — добавляем сравнение
     if G_original is not None and metrics_original is not None:
         original_score = calculate_resilience(G_original, metrics_original)["resilience_score"]
         avg_path_original = average_shortest_path(G_original, weight=weight)
