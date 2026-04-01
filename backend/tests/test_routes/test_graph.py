@@ -637,3 +637,221 @@ class TestGraphIntegration:
         data2 = response2.json()
         
         assert data1["metrics"]["critical_nodes"] == data2["metrics"]["critical_nodes"]
+
+
+class TestCascadeRoutes:
+    """Тесты для эндпоинта каскадной симуляции"""
+
+    def test_simulate_cascade_success(self, client, valid_district):
+        """
+        Тест успешного запуска каскадной симуляции.
+
+        Проверяет, что эндпоинт возвращает статус 200
+        для существующего района.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 5}
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_simulate_cascade_response_structure(self, client, valid_district):
+        """
+        Тест структуры ответа каскадной симуляции.
+
+        Проверяет наличие всех обязательных полей верхнего уровня.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 3}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        assert "district" in data
+        assert "initial_resilience_score" in data
+        assert "steps" in data
+        assert "total_steps" in data
+        assert "calculation_time_ms" in data
+
+    def test_simulate_cascade_step_structure(self, client, valid_district):
+        """
+        Тест структуры одного шага каскадной симуляции.
+
+        Проверяет, что каждый шаг содержит все необходимые поля.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 3}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        step = response.json()["steps"][0]
+
+        assert "step" in step
+        assert "removed_node_id" in step
+        assert "removed_node_label" in step
+        assert "resilience_score" in step
+        assert "connected" in step
+        assert "largest_component_ratio" in step
+        assert "betweenness_concentration" in step
+
+    def test_simulate_cascade_steps_count(self, client, valid_district):
+        """
+        Тест соответствия количества шагов запрошенному значению.
+
+        Проверяет, что total_steps и длина массива steps совпадают
+        с запрошенным количеством шагов.
+        """
+        requested_steps = 5
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": requested_steps}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        assert data["total_steps"] == requested_steps
+        assert len(data["steps"]) == requested_steps
+
+    def test_simulate_cascade_step_numbers_sequential(self, client, valid_district):
+        """
+        Тест последовательной нумерации шагов.
+
+        Проверяет, что шаги пронумерованы от 1 до N без пропусков.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 5}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        steps = response.json()["steps"]
+
+        for i, step in enumerate(steps):
+            assert step["step"] == i + 1
+
+    def test_simulate_cascade_concentration_decreases(self, client, valid_district):
+        """
+        Тест снижения концентрации betweenness при каскадном удалении.
+
+        Удаление узла с максимальным betweenness всегда снижает коэффициент
+        Джини оставшегося распределения — нагрузка перераспределяется
+        равномернее. Проверяем, что концентрация на последнем шаге
+        не превышает концентрацию на первом.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 5}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        steps = response.json()["steps"]
+
+        assert steps[-1]["betweenness_concentration"] <= steps[0]["betweenness_concentration"]
+
+    def test_simulate_cascade_resilience_score_range(self, client, valid_district):
+        """
+        Тест допустимого диапазона resilience_score на каждом шаге.
+
+        Проверяет, что значения resilience_score находятся в [0, 1].
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 5}
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        for step in response.json()["steps"]:
+            assert 0.0 <= step["resilience_score"] <= 1.0
+            assert 0.0 <= step["largest_component_ratio"] <= 1.0
+            assert 0.0 <= step["betweenness_concentration"] <= 1.0
+
+    def test_simulate_cascade_unique_removed_nodes(self, client, valid_district):
+        """
+        Тест уникальности удаляемых узлов.
+
+        Проверяет, что один и тот же узел не удаляется дважды.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 5}
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        removed_ids = [step["removed_node_id"] for step in response.json()["steps"]]
+        assert len(removed_ids) == len(set(removed_ids))
+
+    def test_simulate_cascade_district_not_found(self, client):
+        """
+        Тест каскадной симуляции для несуществующего района.
+
+        Проверяет, что запрос к несуществующему району возвращает 404.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": "nonexistent_xyz", "steps": 5}
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_simulate_cascade_invalid_steps_zero(self, client, valid_district):
+        """
+        Тест валидации: steps не может быть 0.
+
+        Проверяет, что запрос с steps=0 возвращает ошибку валидации.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 0}
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    def test_simulate_cascade_invalid_steps_exceeds_max(self, client, valid_district):
+        """
+        Тест валидации: steps не может превышать 20.
+
+        Проверяет, что запрос с steps=21 возвращает ошибку валидации.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 21}
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    def test_simulate_cascade_default_steps(self, client, valid_district):
+        """
+        Тест дефолтного значения steps.
+
+        Проверяет, что запрос без поля steps использует дефолт (10).
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        assert data["total_steps"] == 10
+
+    def test_simulate_cascade_calculation_time_positive(self, client, valid_district):
+        """
+        Тест положительного времени расчета.
+
+        Проверяет, что calculation_time_ms является неотрицательным числом.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 3}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["calculation_time_ms"] >= 0
+
+    def test_simulate_cascade_district_field_in_response(self, client, valid_district):
+        """
+        Тест соответствия района в ответе запрошенному.
+
+        Проверяет, что поле district в ответе совпадает с переданным.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 3}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["district"] == valid_district
