@@ -6,6 +6,7 @@ import { DEFAULT_CENTER, DEFAULT_ZOOM, TILE_URL, TILE_ATTRIBUTION } from '../../
 import NodeLayer from './NodeLayer'
 import EdgeLayer from './EdgeLayer'
 import 'leaflet/dist/leaflet.css'
+import '../../styles/leaflet-overrides.css'
 import '../../lib/leaflet'
 
 function BoundsUpdater() {

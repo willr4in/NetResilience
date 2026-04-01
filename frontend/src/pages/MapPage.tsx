@@ -11,6 +11,7 @@ import ResiliencePanel from '../components/panels/ResiliencePanel'
 import MetricsPanel from '../components/panels/MetricsPanel'
 import CriticalNodes from '../components/panels/CriticalNodes'
 import CascadePanel from '../components/panels/CascadePanel'
+import LoadingSpinner from '../components/common/LoadingSpinner'
 import type { GraphSchema } from '../types/graph'
 
 export default function MapPage() {
@@ -66,8 +67,8 @@ export default function MapPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-500">
-        Загрузка графа...
+      <div className="flex h-full items-center justify-center">
+        <LoadingSpinner text="Загрузка графа..." />
       </div>
     )
   }

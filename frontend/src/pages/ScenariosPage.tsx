@@ -3,13 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { getScenarios, deleteScenario } from '../api/scenarios'
 import { useScenariosStore } from '../store/scenariosStore'
 import { ROUTES } from '../constants/routes'
+import LoadingSpinner from '../components/common/LoadingSpinner'
 import type { Scenario } from '../types/scenario'
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ru-RU', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  })
-}
+import { formatDate } from '../utils/formatDate'
 
 export default function ScenariosPage() {
   const { scenarios, total, pages, setScenarios, loadScenario } = useScenariosStore()
@@ -44,9 +40,7 @@ export default function ScenariosPage() {
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-xl font-semibold text-gray-800 mb-6">Сценарии</h1>
 
-      {isLoading && (
-        <div className="text-sm text-gray-500">Загрузка...</div>
-      )}
+      {isLoading && <LoadingSpinner />}
 
       {!isLoading && scenarios.length === 0 && (
         <div className="text-sm text-gray-400 py-12 text-center">

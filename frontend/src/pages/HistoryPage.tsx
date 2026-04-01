@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { getHistory } from '../api/history'
 import type { HistoryRecord, ActionType } from '../types/history'
+import { formatDateTime } from '../utils/formatDate'
+import LoadingSpinner from '../components/common/LoadingSpinner'
 
 const ACTION_LABELS: Record<ActionType, string> = {
   calculate: 'Расчёт',
@@ -16,13 +18,6 @@ const ACTION_COLORS: Record<ActionType, string> = {
   view: 'bg-gray-100 text-gray-600',
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('ru-RU', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
 function HistoryItem({ record }: { record: HistoryRecord }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-4">
@@ -34,7 +29,7 @@ function HistoryItem({ record }: { record: HistoryRecord }) {
         {record.scenario_name && (
           <p className="text-sm text-gray-700 truncate">{record.scenario_name}</p>
         )}
-        <p className="text-xs text-gray-400 mt-0.5">{formatDate(record.created_at)}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(record.created_at)}</p>
       </div>
 
       {record.calculation_time_ms != null && (
@@ -72,9 +67,7 @@ export default function HistoryPage() {
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-xl font-semibold text-gray-800 mb-6">История действий</h1>
 
-      {isLoading && (
-        <div className="text-sm text-gray-500">Загрузка...</div>
-      )}
+      {isLoading && <LoadingSpinner />}
 
       {!isLoading && records.length === 0 && (
         <div className="text-sm text-gray-400 py-12 text-center">
