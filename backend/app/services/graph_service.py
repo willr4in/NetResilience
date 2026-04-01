@@ -6,9 +6,9 @@ from typing import Dict, Optional
 import logging
 
 from ..config import settings
-from ..schemas.graph import GraphSchema, GraphChanges, GraphAnalysisResponse
+from ..schemas.graph import GraphSchema, GraphChanges, GraphAnalysisResponse, CascadeRequest, CascadeStep, CascadeResponse
 from ..algorithms.centrality import calculate_all
-from ..algorithms.resilience import calculate_resilience
+from ..algorithms.resilience import calculate_resilience, is_connected, largest_component_ratio, betweenness_concentration
 
 logger = logging.getLogger(__name__)
 
@@ -163,5 +163,78 @@ def analyze(changes: GraphChanges) -> GraphAnalysisResponse:
     return GraphAnalysisResponse(
         metrics=result["metrics"],
         resilience=result["resilience"],
+        calculation_time_ms=calculation_time_ms
+    )
+
+
+def simulate_cascade(request: CascadeRequest) -> CascadeResponse:
+    """
+    Симулирует каскадный отказ сети: последовательно удаляет наиболее
+    критичные узлы (по betweenness) и отслеживает деградацию устойчивости.
+
+    Betweenness рассчитывается один раз на исходном графе — порядок удаления
+    фиксируется заранее. На каждом шаге пересчитываются только дешёвые метрики
+    (связность, размер компоненты, концентрация), без average_shortest_path.
+    """
+    start_time = time.time()
+
+    _, G = load_graph(request.district)
+
+    initial_centrality = calculate_all(G)
+    betweenness_original = initial_centrality.get("betweenness", {})
+
+    initial_resilience = calculate_resilience(G, initial_centrality)
+    initial_score = initial_resilience["resilience_score"]
+
+    ranked_nodes = sorted(betweenness_original, key=betweenness_original.get, reverse=True)
+
+    G_current = G.copy()
+    current_betweenness = dict(betweenness_original)
+    cascade_steps = []
+
+    actual_steps = min(request.steps, len(ranked_nodes))
+
+    for i in range(actual_steps):
+        node_id = ranked_nodes[i]
+
+        if not G_current.has_node(node_id):
+            logger.warning(f"Cascade step {i + 1}: node {node_id} already removed, skipping")
+            continue
+
+        node_label = G_current.nodes[node_id].get("label", node_id)
+        G_current.remove_node(node_id)
+        current_betweenness.pop(node_id, None)
+
+        connected = is_connected(G_current) if len(G_current.nodes()) > 0 else False
+        comp_ratio = largest_component_ratio(G_current)
+        concentration = betweenness_concentration(current_betweenness)
+
+        # Формула идентична calculate_resilience, но без average_shortest_path
+        # (дорогая операция O(V^2), нецелесообразна при N итерациях каскада)
+        resilience_score = round(
+            0.4 * (1.0 if connected else 0.0) +
+            0.3 * comp_ratio +
+            0.3 * (1.0 - concentration),
+            4
+        )
+
+        cascade_steps.append(CascadeStep(
+            step=len(cascade_steps) + 1,
+            removed_node_id=node_id,
+            removed_node_label=node_label,
+            resilience_score=resilience_score,
+            connected=connected,
+            largest_component_ratio=round(comp_ratio, 4),
+            betweenness_concentration=round(concentration, 4)
+        ))
+
+    calculation_time_ms = round((time.time() - start_time) * 1000, 2)
+    logger.info(f"Cascade simulation: {len(cascade_steps)} steps, district={request.district}, {calculation_time_ms}ms")
+
+    return CascadeResponse(
+        district=request.district,
+        initial_resilience_score=initial_score,
+        steps=cascade_steps,
+        total_steps=len(cascade_steps),
         calculation_time_ms=calculation_time_ms
     )

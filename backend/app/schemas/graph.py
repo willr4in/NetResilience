@@ -46,3 +46,26 @@ class GraphAnalysisResponse(BaseModel):
     metrics: MetricResponse = Field(..., description="Calculated metrics")
     resilience: Dict[str, Any] = Field(..., description="Resilience metrics")
     calculation_time_ms: float = Field(0.0, description="Calculation time in milliseconds")
+
+
+class CascadeRequest(BaseModel):
+    district: str = Field(..., description="District name")
+    steps: int = Field(10, ge=1, le=20, description="Number of cascade steps (1–20)")
+
+
+class CascadeStep(BaseModel):
+    step: int = Field(..., description="Step number")
+    removed_node_id: str = Field(..., description="ID of the removed node")
+    removed_node_label: str = Field(..., description="Label of the removed node")
+    resilience_score: float = Field(..., description="Resilience score after removal")
+    connected: bool = Field(..., description="Whether the graph is still connected")
+    largest_component_ratio: float = Field(..., description="Fraction of nodes in largest component")
+    betweenness_concentration: float = Field(..., description="Betweenness concentration (Gini)")
+
+
+class CascadeResponse(BaseModel):
+    district: str = Field(..., description="District name")
+    initial_resilience_score: float = Field(..., description="Resilience score before any removal")
+    steps: List[CascadeStep] = Field(..., description="Cascade simulation steps")
+    total_steps: int = Field(..., description="Actual number of steps executed")
+    calculation_time_ms: float = Field(0.0, description="Calculation time in milliseconds")
