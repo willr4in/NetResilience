@@ -17,7 +17,7 @@ class UserService:
             logger.warning(f"User not found with id: {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                detail="Пользователь не найден"
             )
         logger.info(f"User found: {user.email} (id={user.id})")
         return UserResponse.model_validate(user)
@@ -28,7 +28,7 @@ class UserService:
             logger.warning(f"User not found with email: {email}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                detail="Пользователь не найден"
             )
         logger.info(f"User found: {user.email} (id={user.id})")
         return UserResponse.model_validate(user)
@@ -41,7 +41,7 @@ class UserService:
     def delete_user(self, user_id: int) -> dict:
         user = self.user_repository.get_user_by_id(user_id)
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
         self.user_repository.delete_user(user_id)
         logger.info(f"User deleted: {user.email} (id={user_id})")
         return {"message": f"User {user.email} deleted successfully"}

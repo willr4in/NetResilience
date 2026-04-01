@@ -61,7 +61,7 @@ class HistoryService:
         if not deleted:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="History record not found"
+                detail="Запись истории не найдена"
             )
         logger.info(f"History record deleted: id={history_id}")
         return {"message": f"History record {history_id} deleted successfully"}

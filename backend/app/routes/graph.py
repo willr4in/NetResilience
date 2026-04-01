@@ -10,14 +10,14 @@ def get_graph(district: str):
         graph_schema, _ = load_graph(district)
         return graph_schema
     except FileNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Graph '{district}' not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Граф '{district}' не найден")
 
 @router.post("/calculate", response_model=GraphAnalysisResponse, status_code=status.HTTP_200_OK)
 def calculate(changes: GraphChanges):
     try:
         return analyze(changes)
     except FileNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Graph '{changes.district}' not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Граф '{changes.district}' не найден")
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
@@ -27,6 +27,6 @@ def cascade(request: CascadeRequest):
     try:
         return simulate_cascade(request)
     except FileNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Graph '{request.district}' not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Граф '{request.district}' не найден")
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))

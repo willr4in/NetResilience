@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from typing import List
 from ..repositories.scenario_repository import ScenarioRepository
 from ..repositories.history_repository import HistoryRepository
 from ..schemas.scenario import ScenarioCreate, ScenarioResponse, ScenarioUpdate, ScenarioList
@@ -22,7 +21,7 @@ class ScenarioService:
         if not district_exists(scenario_data.district):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Graph for district '{scenario_data.district}' not found"
+                detail=f"Граф для района '{scenario_data.district}' не найден"
             )
 
         changes = GraphChanges(
@@ -38,7 +37,7 @@ class ScenarioService:
         except FileNotFoundError:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Graph for district '{scenario_data.district}' not found"
+                detail=f"Граф для района '{scenario_data.district}' не найден"
             )
         except ValueError as e:
             raise HTTPException(
@@ -57,7 +56,13 @@ class ScenarioService:
             history_data=HistoryCreate(
                 scenario_id=scenario.id,
                 action=ActionType.SAVE,
-                details={"district": scenario_data.district},
+                details={
+                    "district": scenario_data.district,
+                    "scenario_name": scenario_data.name,
+                    "removed_nodes_count": len(scenario_data.removed_nodes),
+                    "removed_edges_count": len(scenario_data.removed_edges),
+                    "resilience_score": round(analysis.resilience.get("score", 0) * 100, 1),
+                },
                 calculation_time_ms=analysis.calculation_time_ms
             )
         )
@@ -68,10 +73,10 @@ class ScenarioService:
     def get_scenario(self, scenario_id: int, user_id: int) -> ScenarioResponse:
         scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
         if not scenario:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Сценарий не найден")
         
         if scenario.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your scenario")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому сценарию")
 
         self.scenario_repository.increment_hits(scenario_id)
 
@@ -103,10 +108,10 @@ class ScenarioService:
     def update_scenario(self, scenario_id: int, user_id: int, update_data: ScenarioUpdate) -> ScenarioResponse:
         scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
         if not scenario:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Сценарий не найден")
 
         if scenario.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your scenario")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому сценарию")
 
         updated = self.scenario_repository.update_scenario(scenario_id, update_data)
         logger.info(f"Scenario updated: id={scenario_id}, user_id={user_id}")
@@ -115,10 +120,10 @@ class ScenarioService:
     def delete_scenario(self, scenario_id: int, user_id: int) -> dict:
         scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
         if not scenario:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Сценарий не найден")
 
         if scenario.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your scenario")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому сценарию")
 
         self.scenario_repository.delete_scenario(scenario_id)
 

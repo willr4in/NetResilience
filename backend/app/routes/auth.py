@@ -57,7 +57,7 @@ def login(data: LoginRequest, response: Response, auth_service: AuthService = De
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 def refresh(response: Response, refresh_token: Optional[str] = Cookie(None), auth_service: AuthService = Depends(get_auth_service)):
     if not refresh_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Токен обновления отсутствует")
     
     new_access_token = auth_service.refresh_access_token(refresh_token)
 
