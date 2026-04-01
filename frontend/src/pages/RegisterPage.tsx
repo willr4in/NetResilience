@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { register, login, getMe } from '../api/auth'
+import { register, getMe } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 import { ROUTES } from '../constants/routes'
 
@@ -22,12 +22,26 @@ export default function RegisterPage() {
 
     try {
       await register({ name, surname, email, password })
-      await login({ email, password })
       const { data: user } = await getMe()
       setUser(user)
       navigate(ROUTES.MAP)
-    } catch {
-      setError('Ошибка регистрации. Возможно, email уже занят.')
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      if (Array.isArray(detail)) {
+        const messages = detail.map((e: any) => {
+          const field = e.loc?.[e.loc.length - 1]
+          const fieldLabels: Record<string, string> = {
+            name: 'Имя', surname: 'Фамилия', email: 'Email', password: 'Пароль',
+          }
+          const label = fieldLabels[field] ?? field
+          return `${label}: ${e.msg}`
+        })
+        setError(messages.join('\n'))
+      } else if (typeof detail === 'string') {
+        setError(detail)
+      } else {
+        setError('Ошибка регистрации. Возможно, email уже занят.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -80,12 +94,19 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={8}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <p className="text-xs text-gray-400 mt-1">Минимум 8 символов</p>
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <div className="flex flex-col gap-0.5">
+              {error.split('\n').map((msg, i) => (
+                <p key={i} className="text-sm text-red-500">{msg}</p>
+              ))}
+            </div>
+          )}
 
           <button
             type="submit"

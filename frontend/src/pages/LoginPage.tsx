@@ -23,8 +23,13 @@ export default function LoginPage() {
       const { data: user } = await getMe()
       setUser(user)
       navigate(ROUTES.MAP)
-    } catch {
-      setError('Неверный email или пароль')
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      if (typeof detail === 'string') {
+        setError(detail)
+      } else {
+        setError('Неверный email или пароль')
+      }
     } finally {
       setIsLoading(false)
     }

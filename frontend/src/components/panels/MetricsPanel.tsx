@@ -8,9 +8,9 @@ interface Props {
 }
 
 const LABELS: Record<MetricKey, string> = {
-  betweenness: 'Посредничество',
-  closeness: 'Близость',
-  degree: 'Степень',
+  betweenness: 'Betweenness',
+  closeness: 'Closeness',
+  degree: 'Degree',
 }
 
 export default function MetricsPanel({ metrics }: Props) {

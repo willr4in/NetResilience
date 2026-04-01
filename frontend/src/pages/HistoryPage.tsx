@@ -18,6 +18,46 @@ const ACTION_COLORS: Record<ActionType, string> = {
   view: 'bg-gray-100 text-gray-600',
 }
 
+function HistoryDetails({ record }: { record: HistoryRecord }) {
+  const d = record.details as Record<string, unknown>
+
+  if (record.action === 'save') {
+    const name = (d.scenario_name ?? record.scenario_name) as string | null
+    const nodes = d.removed_nodes_count as number | null
+    const edges = d.removed_edges_count as number | null
+    const score = d.resilience_score as number | null
+    return (
+      <div className="flex-1 min-w-0">
+        {name && <p className="text-sm text-gray-700 truncate">«{name}»</p>}
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
+          {nodes != null && <span>Удалено узлов: {nodes}</span>}
+          {edges != null && <span>Рёбер: {edges}</span>}
+          {score != null && <span>Resilience: {score}%</span>}
+        </div>
+        <p className="text-xs text-gray-300 mt-0.5">{formatDateTime(record.created_at)}</p>
+      </div>
+    )
+  }
+
+  if (record.action === 'delete') {
+    const name = (d.deleted_scenario_name ?? record.scenario_name) as string | null
+    return (
+      <div className="flex-1 min-w-0">
+        {name && <p className="text-sm text-gray-700 truncate">«{name}»</p>}
+        <p className="text-xs text-gray-300 mt-0.5">{formatDateTime(record.created_at)}</p>
+      </div>
+    )
+  }
+
+  const name = (d.scenario_name ?? record.scenario_name) as string | null
+  return (
+    <div className="flex-1 min-w-0">
+      {name && <p className="text-sm text-gray-700 truncate">«{name}»</p>}
+      <p className="text-xs text-gray-300 mt-0.5">{formatDateTime(record.created_at)}</p>
+    </div>
+  )
+}
+
 function HistoryItem({ record }: { record: HistoryRecord }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-4">
@@ -25,12 +65,7 @@ function HistoryItem({ record }: { record: HistoryRecord }) {
         {ACTION_LABELS[record.action]}
       </span>
 
-      <div className="flex-1 min-w-0">
-        {record.scenario_name && (
-          <p className="text-sm text-gray-700 truncate">{record.scenario_name}</p>
-        )}
-        <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(record.created_at)}</p>
-      </div>
+      <HistoryDetails record={record} />
 
       {record.calculation_time_ms != null && (
         <span className="text-xs text-gray-400 shrink-0">

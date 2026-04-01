@@ -8,7 +8,7 @@ import type { Scenario } from '../types/scenario'
 import { formatDate } from '../utils/formatDate'
 
 export default function ScenariosPage() {
-  const { scenarios, total, pages, setScenarios, loadScenario } = useScenariosStore()
+  const { scenarios, total, pages, setScenarios } = useScenariosStore()
   const [page, setPage] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
@@ -27,8 +27,7 @@ export default function ScenariosPage() {
   useEffect(() => { fetchScenarios(1) }, [])
 
   const handleLoad = (scenario: Scenario) => {
-    loadScenario(scenario)
-    navigate(ROUTES.MAP)
+    navigate(ROUTES.MAP, { state: { scenario } })
   }
 
   const handleDelete = async (id: number) => {

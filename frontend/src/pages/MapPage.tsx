@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useGraphStore } from '../store/graphStore'
 import { getGraph, calculate } from '../api/graph'
 import { createScenario } from '../api/scenarios'
@@ -20,10 +21,12 @@ export default function MapPage() {
   const removedEdges = useGraphStore((s) => s.removedEdges)
   const analysisResult = useGraphStore((s) => s.analysisResult)
   const isLoading = useGraphStore((s) => s.isLoading)
+  const location = useLocation()
 
   const [graphSchema, setGraphSchema] = useState<GraphSchema | null>(null)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -32,6 +35,11 @@ export default function MapPage() {
         const { data } = await getGraph(DISTRICT)
         setGraphSchema(data)
         setGraph(data.metadata.district, data.nodes, data.edges)
+        const scenario = location.state?.scenario
+        if (scenario) {
+          scenario.removed_nodes.forEach((id: string) => useGraphStore.getState().toggleNode(id))
+          scenario.removed_edges.forEach(([s, t]: string[]) => useGraphStore.getState().toggleEdge(s, t))
+        }
       } finally {
         setLoading(false)
       }
@@ -53,16 +61,28 @@ export default function MapPage() {
 
   const handleSave = async () => {
     if (!graphSchema || !saveName.trim()) return
-    await createScenario({
-      name: saveName.trim(),
-      district: graphSchema.metadata.district,
-      removed_nodes: removedNodes,
-      removed_edges: removedEdges,
-      added_nodes: [],
-      added_edges: [],
-    })
-    setSaveModalOpen(false)
-    setSaveName('')
+    setSaveError('')
+    try {
+      await createScenario({
+        name: saveName.trim(),
+        district: graphSchema.metadata.district,
+        removed_nodes: removedNodes,
+        removed_edges: removedEdges,
+        added_nodes: [],
+        added_edges: [],
+      })
+      setSaveModalOpen(false)
+      setSaveName('')
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setSaveError(detail.map((e: any) => e.msg).join(', '))
+      } else if (typeof detail === 'string') {
+        setSaveError(detail)
+      } else {
+        setSaveError('Ошибка при сохранении')
+      }
+    }
   }
 
   if (isLoading) {
@@ -106,8 +126,10 @@ export default function MapPage() {
               placeholder="Название сценария"
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {saveError && <p className="text-xs text-red-500 mb-3">{saveError}</p>}
+            {!saveError && <div className="mb-3" />}
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setSaveModalOpen(false)}

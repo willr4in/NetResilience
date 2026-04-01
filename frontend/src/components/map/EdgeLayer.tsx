@@ -25,17 +25,28 @@ function EdgeLayer({ edges, nodeMap }: Props) {
         )
 
         return (
-          <Polyline
-            key={`${edge.source}-${edge.target}`}
-            positions={positions}
-            pathOptions={{
-              color: isRemoved ? '#ef4444' : '#64748b',
-              weight: isRemoved ? 2 : 1.5,
-              opacity: isRemoved ? 0.5 : 0.6,
-              dashArray: isRemoved ? '6 4' : undefined,
-            }}
-            eventHandlers={{ click: () => toggleEdge(edge.source, edge.target) }}
-          />
+          <>
+            <Polyline
+              key={`${edge.source}-${edge.target}`}
+              positions={positions}
+              pathOptions={{
+                color: isRemoved ? '#ef4444' : '#64748b',
+                weight: isRemoved ? 2 : 1.5,
+                opacity: isRemoved ? 0.5 : 0.6,
+                dashArray: isRemoved ? '6 4' : undefined,
+              }}
+            />
+            <Polyline
+              key={`${edge.source}-${edge.target}-hit`}
+              positions={positions}
+              pathOptions={{
+                color: 'transparent',
+                weight: 12,
+                opacity: 0,
+              }}
+              eventHandlers={{ click: () => toggleEdge(edge.source, edge.target) }}
+            />
+          </>
         )
       })}
     </>
