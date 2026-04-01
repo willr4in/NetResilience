@@ -7,6 +7,10 @@ import { DISTRICT } from '../constants/map'
 import GraphMap from '../components/map/GraphMap'
 import MapControls from '../components/map/MapControls'
 import Sidebar from '../components/layout/Sidebar'
+import ResiliencePanel from '../components/panels/ResiliencePanel'
+import MetricsPanel from '../components/panels/MetricsPanel'
+import CriticalNodes from '../components/panels/CriticalNodes'
+import CascadePanel from '../components/panels/CascadePanel'
 import type { GraphSchema } from '../types/graph'
 
 export default function MapPage() {
@@ -78,13 +82,19 @@ export default function MapPage() {
         />
       </div>
 
-      {analysisResult && (
-        <Sidebar>
-          <div className="p-4 text-sm text-gray-500">
-            Панели анализа появятся на этапе 7
-          </div>
-        </Sidebar>
-      )}
+      <Sidebar>
+        {analysisResult && (
+          <>
+            <ResiliencePanel resilience={analysisResult.resilience} />
+            <MetricsPanel metrics={analysisResult.metrics} />
+            <CriticalNodes
+              criticalNodes={analysisResult.metrics.critical_nodes}
+              betweenness={analysisResult.metrics.betweenness}
+            />
+          </>
+        )}
+        <CascadePanel />
+      </Sidebar>
 
       {saveModalOpen && (
         <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/40">
