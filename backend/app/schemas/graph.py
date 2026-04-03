@@ -40,6 +40,7 @@ class MetricResponse(BaseModel):
     closeness: Dict[str, float] = Field(default_factory=dict)
     degree: Dict[str, float] = Field(default_factory=dict)
     critical_nodes: List[str] = Field(default_factory=list)
+    isolated_nodes: List[str] = Field(default_factory=list)
 
 
 class GraphAnalysisResponse(BaseModel):
@@ -50,7 +51,7 @@ class GraphAnalysisResponse(BaseModel):
 
 class CascadeRequest(BaseModel):
     district: str = Field(..., description="District name")
-    steps: int = Field(10, ge=1, le=20, description="Number of cascade steps (1–20)")
+    steps: int = Field(10, ge=1, le=100, description="Number of cascade steps (1–100)")
 
 
 class CascadeStep(BaseModel):

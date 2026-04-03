@@ -61,7 +61,9 @@ class ScenarioService:
                     "scenario_name": scenario_data.name,
                     "removed_nodes_count": len(scenario_data.removed_nodes),
                     "removed_edges_count": len(scenario_data.removed_edges),
-                    "resilience_score": round(analysis.resilience.get("score", 0) * 100, 1),
+                    "added_nodes_count": len(scenario_data.added_nodes),
+                    "added_edges_count": len(scenario_data.added_edges),
+                    "resilience_score": round(analysis.resilience.get("resilience_score", 0) * 100, 1),
                 },
                 calculation_time_ms=analysis.calculation_time_ms
             )
@@ -70,24 +72,30 @@ class ScenarioService:
         logger.info(f"Scenario saved: id={scenario.id}, user_id={user_id}")
         return ScenarioResponse.model_validate(scenario)
 
+    def record_view(self, scenario_id: int, user_id: int) -> None:
+        scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
+        if not scenario:
+            return
+        already_viewed = self.history_repository.has_user_viewed_scenario(user_id, scenario_id)
+        if not already_viewed:
+            self.scenario_repository.increment_hits(scenario_id)
+            self.history_repository.create_history(
+                user_id=user_id,
+                history_data=HistoryCreate(
+                    scenario_id=scenario_id,
+                    action=ActionType.VIEW,
+                    details={"scenario_name": scenario.name}
+                )
+            )
+        logger.info(f"Scenario view recorded: id={scenario_id}, user_id={user_id}, new={not already_viewed}")
+
     def get_scenario(self, scenario_id: int, user_id: int) -> ScenarioResponse:
         scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
         if not scenario:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Сценарий не найден")
-        
+
         if scenario.user_id != user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому сценарию")
-
-        self.scenario_repository.increment_hits(scenario_id)
-
-        self.history_repository.create_history(
-            user_id=user_id,
-            history_data=HistoryCreate(
-                scenario_id=scenario_id,
-                action=ActionType.VIEW,
-                details={"scenario_name": scenario.name}
-            )
-        )
 
         logger.info(f"Scenario viewed: id={scenario_id}, user_id={user_id}")
         return ScenarioResponse.model_validate(scenario)
@@ -104,6 +112,19 @@ class ScenarioService:
             size=size,
             pages=pages
         )
+
+    def get_all_scenarios(self, page: int = 1, size: int = 10) -> ScenarioList:
+        scenarios, total = self.scenario_repository.get_all_scenarios(page, size)
+        pages = math.ceil(total / size) if total > 0 else 1
+
+        items = []
+        for s in scenarios:
+            data = ScenarioResponse.model_validate(s)
+            if s.user:
+                data.author_name = f"{s.user.name} {s.user.surname}"
+            items.append(data)
+
+        return ScenarioList(items=items, total=total, page=page, size=size, pages=pages)
 
     def update_scenario(self, scenario_id: int, user_id: int, update_data: ScenarioUpdate) -> ScenarioResponse:
         scenario = self.scenario_repository.get_scenario_by_id(scenario_id)

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from ..models.history import History
-from ..schemas.history import HistoryCreate
+from ..schemas.history import HistoryCreate, ActionType
 
 class HistoryRepository:
     def __init__(self, db: Session):
@@ -49,6 +49,13 @@ class HistoryRepository:
         )
         return history, total
     
+    def has_user_viewed_scenario(self, user_id: int, scenario_id: int) -> bool:
+        return self.db.query(History).filter(
+            History.user_id == user_id,
+            History.scenario_id == scenario_id,
+            History.action == ActionType.VIEW
+        ).first() is not None
+
     def delete_history(self, history_id: int) -> bool:
         history = self.get_history_by_id(history_id)
         if not history:

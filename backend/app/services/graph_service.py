@@ -124,8 +124,15 @@ def run_analysis(
     else:
         critical_nodes = []
 
+    if not nx.is_connected(G_modified) and len(G_modified.nodes()) > 0:
+        largest = max(nx.connected_components(G_modified), key=len)
+        isolated_nodes = [n for n in G_modified.nodes() if n not in largest]
+    else:
+        isolated_nodes = []
+
     logger.info(
         f"Analysis complete: critical_nodes={len(critical_nodes)}, "
+        f"isolated_nodes={len(isolated_nodes)}, "
         f"resilience_score={resilience_metrics.get('resilience_score')}"
     )
 
@@ -134,7 +141,8 @@ def run_analysis(
             "betweenness": centrality_metrics.get("betweenness", {}),
             "closeness": centrality_metrics.get("closeness", {}),
             "degree": centrality_metrics.get("degree", {}),
-            "critical_nodes": critical_nodes
+            "critical_nodes": critical_nodes,
+            "isolated_nodes": isolated_nodes,
         },
         "resilience": resilience_metrics
     }

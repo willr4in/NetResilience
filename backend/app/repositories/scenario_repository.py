@@ -40,6 +40,17 @@ class ScenarioRepository:
         )
         return scenarios, total
         
+    def get_all_scenarios(self, page: int = 1, size: int = 10):
+        total = self.db.query(Scenario).count()
+        scenarios = (
+            self.db.query(Scenario)
+            .order_by(Scenario.created_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+            .all()
+        )
+        return scenarios, total
+
     def get_scenarios_by_district(self, district: str) -> List[Scenario]:
         return self.db.query(Scenario).filter(Scenario.district == district).all()
     

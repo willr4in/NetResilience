@@ -59,6 +59,7 @@ class ScenarioUpdate(BaseModel):
 class ScenarioResponse(ScenarioBase):
     id: int = Field(..., description="ID of the scenario")
     user_id: Optional[int] = Field(None)
+    author_name: Optional[str] = Field(None, description="Full name of the author")
     metrics: Optional[MetricResponse] = Field(None)
     hits: int = Field(..., description="Number of times the scenario was used")
     created_at: datetime = Field(..., description="Timestamp of when the scenario was created")

@@ -51,7 +51,8 @@ class AuthService:
             )
 
     def register(self, data: RegisterRequest) -> User:
-        existing = self.user_repository.get_user_by_email(data.email)
+        normalized_email = data.email.lower()
+        existing = self.user_repository.get_user_by_email(normalized_email)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -60,13 +61,13 @@ class AuthService:
         user_data = UserCreate(
             name=data.name,
             surname=data.surname,
-            email=data.email,
+            email=normalized_email,
             password=self.hash_password(data.password)
         )
         return self.user_repository.create_user(user_data)
 
     def login(self, email: str, password: str) -> User:
-        user = self.user_repository.get_user_by_email(email)
+        user = self.user_repository.get_user_by_email(email.lower())
         if not user or not self.verify_password(password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

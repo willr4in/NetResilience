@@ -6,6 +6,15 @@ from ..models.user import User
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 
+@router.get("/public", response_model=ScenarioList, status_code=status.HTTP_200_OK)
+def get_public_scenarios(
+    page: int = 1,
+    size: int = 10,
+    current_user: User = Depends(get_current_user),
+    scenario_service: ScenarioService = Depends(get_scenario_service)
+):
+    return scenario_service.get_all_scenarios(page=page, size=size)
+
 @router.get("", response_model=ScenarioList, status_code=status.HTTP_200_OK)
 def get_all_scenarios(
     page: int = 1,
@@ -39,6 +48,15 @@ def update_scenario(
     scenario_service: ScenarioService = Depends(get_scenario_service)
 ):
     return scenario_service.update_scenario(scenario_id, user_id=current_user.id, update_data=update_data)
+
+@router.post("/{scenario_id}/view", status_code=status.HTTP_200_OK)
+def view_scenario(
+    scenario_id: int,
+    current_user: User = Depends(get_current_user),
+    scenario_service: ScenarioService = Depends(get_scenario_service)
+):
+    scenario_service.record_view(scenario_id, user_id=current_user.id)
+    return {"ok": True}
 
 @router.delete("/{scenario_id}", status_code=status.HTTP_200_OK)
 def delete_scenario(
