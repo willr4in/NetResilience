@@ -203,7 +203,7 @@ class TestGraphRoutes:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         data = response.json()
         assert "detail" in data
-        assert "not found" in data["detail"].lower()
+        assert "не найден" in data["detail"].lower()
 
     def test_calculate_no_changes(self, client, valid_district):
         """
@@ -801,19 +801,19 @@ class TestCascadeRoutes:
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 0}
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_simulate_cascade_invalid_steps_exceeds_max(self, client, valid_district):
         """
-        Тест валидации: steps не может превышать 20.
+        Тест валидации: steps не может превышать 100.
 
-        Проверяет, что запрос с steps=21 возвращает ошибку валидации.
+        Проверяет, что запрос с steps=101 возвращает ошибку валидации.
         """
         response = client.post(
             "/api/graph/simulate-cascade",
-            json={"district": valid_district, "steps": 21}
+            json={"district": valid_district, "steps": 101}
         )
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_simulate_cascade_default_steps(self, client, valid_district):
         """
@@ -855,3 +855,46 @@ class TestCascadeRoutes:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["district"] == valid_district
+
+    def test_simulate_cascade_with_removed_nodes(self, client, valid_district, graph_node_ids):
+        """
+        Тест каскада с предварительно удалёнными узлами.
+
+        Удалённые узлы не должны появляться в шагах каскада.
+        """
+        removed = [graph_node_ids["node1"]]
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 3, "removed_nodes": removed}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        cascade_ids = [s["removed_node_id"] for s in response.json()["steps"]]
+        assert graph_node_ids["node1"] not in cascade_ids
+
+    def test_simulate_cascade_with_added_nodes_and_edges(self, client, valid_district, graph_node_ids):
+        """
+        Тест каскада с добавленными узлами и рёбрами.
+
+        Проверяет, что запрос с added_nodes/added_edges проходит успешно.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={
+                "district": valid_district,
+                "steps": 3,
+                "added_nodes": [{"id": "extra_node", "label": "Extra", "lat": 55.75, "lon": 37.62}],
+                "added_edges": [[graph_node_ids["node1"], "extra_node"]]
+            }
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["total_steps"] == 3
+
+    def test_simulate_cascade_steps_100_allowed(self, client, valid_district):
+        """
+        Тест валидации: steps=100 допустимо.
+        """
+        response = client.post(
+            "/api/graph/simulate-cascade",
+            json={"district": valid_district, "steps": 100}
+        )
+        assert response.status_code == status.HTTP_200_OK

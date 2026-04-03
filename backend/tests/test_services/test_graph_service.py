@@ -1,8 +1,8 @@
 import pytest
 import networkx as nx
 from pathlib import Path
-from app.services.graph_service import load_graph, apply_changes, run_analysis, analyze, district_exists
-from app.schemas.graph import GraphChanges, GraphSchema, NodeSchema, EdgeSchema, GraphMetadata
+from app.services.graph_service import load_graph, apply_changes, run_analysis, analyze, district_exists, simulate_cascade, haversine
+from app.schemas.graph import GraphChanges, GraphSchema, NodeSchema, EdgeSchema, GraphMetadata, CascadeRequest
 
 
 @pytest.fixture
@@ -697,3 +697,169 @@ class TestGraphServiceIntegration:
         response = analyze(changes)
         assert response.metrics is not None
         assert response.calculation_time_ms > 0
+
+
+class TestHaversine:
+    """Тесты для функции haversine"""
+
+    def test_same_point_is_zero(self):
+        """Расстояние от точки до себя равно нулю."""
+        assert haversine(55.75, 37.61, 55.75, 37.61) == 0.0
+
+    def test_known_distance_moscow(self):
+        """
+        Расстояние между центром Москвы и Красной площадью ~1 км.
+        Допуск ±0.5 км.
+        """
+        dist = haversine(55.7512, 37.6184, 55.7558, 37.6173)
+        assert 0.3 < dist < 1.5
+
+    def test_result_is_positive(self):
+        """Результат всегда положительный."""
+        assert haversine(55.75, 37.61, 55.76, 37.62) > 0
+
+    def test_symmetry(self):
+        """Расстояние A→B равно B→A."""
+        d1 = haversine(55.75, 37.61, 55.76, 37.62)
+        d2 = haversine(55.76, 37.62, 55.75, 37.61)
+        assert abs(d1 - d2) < 1e-9
+
+
+class TestApplyChangesEdgeWeight:
+    """Тесты для расчёта весов рёбер через haversine"""
+
+    def test_added_edge_weight_uses_haversine(self):
+        """
+        Вес добавленного ребра рассчитывается через haversine,
+        а не равен 1.0 по умолчанию.
+        """
+        _, G = load_graph("tverskoy")
+        nodes = list(G.nodes())
+        n1, n2 = nodes[0], nodes[1]
+
+        changes = GraphChanges(
+            district="tverskoy",
+            removed_nodes=[],
+            removed_edges=[],
+            added_nodes=[],
+            added_edges=[[n1, n2]]
+        )
+        G_mod = apply_changes(G, changes)
+        weight = G_mod[n1][n2]["weight"]
+
+        lat1, lon1 = G.nodes[n1]["lat"], G.nodes[n1]["lon"]
+        lat2, lon2 = G.nodes[n2]["lat"], G.nodes[n2]["lon"]
+        expected = haversine(lat1, lon1, lat2, lon2)
+
+        assert abs(weight - expected) < 1e-6
+
+    def test_added_edge_explicit_weight_preserved(self):
+        """
+        Если вес указан явно третьим элементом, он используется как есть.
+        """
+        _, G = load_graph("tverskoy")
+        nodes = list(G.nodes())
+        n1, n2 = nodes[0], nodes[1]
+
+        changes = GraphChanges(
+            district="tverskoy",
+            removed_nodes=[],
+            removed_edges=[],
+            added_nodes=[],
+            added_edges=[[n1, n2, "2.5"]]
+        )
+        G_mod = apply_changes(G, changes)
+        assert abs(G_mod[n1][n2]["weight"] - 2.5) < 1e-6
+
+
+class TestSimulateCascade:
+    """Тесты для функции simulate_cascade"""
+
+    def test_cascade_returns_response(self):
+        """simulate_cascade возвращает CascadeResponse."""
+        from app.schemas.graph import CascadeResponse
+        req = CascadeRequest(district="tverskoy", steps=3)
+        result = simulate_cascade(req)
+        assert isinstance(result, CascadeResponse)
+
+    def test_cascade_steps_count_matches(self):
+        """Количество шагов совпадает с запрошенным."""
+        req = CascadeRequest(district="tverskoy", steps=5)
+        result = simulate_cascade(req)
+        assert result.total_steps == 5
+        assert len(result.steps) == 5
+
+    def test_cascade_initial_score_positive(self):
+        """initial_resilience_score > 0 для связного графа."""
+        req = CascadeRequest(district="tverskoy", steps=3)
+        result = simulate_cascade(req)
+        assert result.initial_resilience_score > 0
+
+    def test_cascade_with_removed_nodes_skips_them(self):
+        """
+        При каскаде на модифицированном графе (removed_nodes)
+        удалённые узлы не появляются в шагах каскада.
+        """
+        _, G = load_graph("tverskoy")
+        nodes = list(G.nodes())
+        removed = nodes[:3]
+
+        req = CascadeRequest(
+            district="tverskoy",
+            steps=5,
+            removed_nodes=removed
+        )
+        result = simulate_cascade(req)
+        cascade_removed = {step.removed_node_id for step in result.steps}
+        for node in removed:
+            assert node not in cascade_removed
+
+    def test_cascade_with_modifications_fewer_nodes(self):
+        """
+        Каскад на графе с удалёнными узлами стартует
+        с меньшим initial_resilience_score или равным (граф меньше).
+        """
+        _, G = load_graph("tverskoy")
+        nodes = list(G.nodes())
+
+        req_clean = CascadeRequest(district="tverskoy", steps=3)
+        req_modified = CascadeRequest(
+            district="tverskoy",
+            steps=3,
+            removed_nodes=nodes[:5]
+        )
+
+        result_clean = simulate_cascade(req_clean)
+        result_modified = simulate_cascade(req_modified)
+
+        # Модифицированный граф меньше — метрика не должна превышать оригинальную
+        assert result_modified.initial_resilience_score <= result_clean.initial_resilience_score + 0.01
+
+    def test_cascade_with_added_nodes_and_edges(self):
+        """Каскад корректно работает при добавлении узлов и рёбер."""
+        _, G = load_graph("tverskoy")
+        nodes = list(G.nodes())
+
+        req = CascadeRequest(
+            district="tverskoy",
+            steps=3,
+            added_nodes=[{"id": "new_cascade_node", "label": "Test", "lat": 55.75, "lon": 37.62}],
+            added_edges=[[nodes[0], "new_cascade_node"]]
+        )
+        result = simulate_cascade(req)
+        assert result.total_steps == 3
+
+    def test_cascade_invalid_district(self):
+        """Несуществующий район вызывает FileNotFoundError."""
+        req = CascadeRequest(district="nonexistent_xyz", steps=3)
+        with pytest.raises(FileNotFoundError):
+            simulate_cascade(req)
+
+    def test_cascade_scores_in_valid_range(self):
+        """Все resilience_score на шагах в диапазоне [0, 1]."""
+        req = CascadeRequest(district="tverskoy", steps=5)
+        result = simulate_cascade(req)
+        for step in result.steps:
+            assert 0.0 <= step.resilience_score <= 1.0
+            assert 0.0 <= step.largest_component_ratio <= 1.0
+            assert 0.0 <= step.betweenness_concentration <= 1.0

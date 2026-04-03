@@ -35,7 +35,7 @@ class TestUserService:
             service.get_user_by_id(99999)
         
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert exc_info.value.detail == "User not found"
+        assert exc_info.value.detail == "Пользователь не найден"
 
     def test_get_user_by_email_success(self, db_session, test_user):
         """
@@ -65,7 +65,7 @@ class TestUserService:
             service.get_user_by_email("nonexistent@test.com")
         
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert exc_info.value.detail == "User not found"
+        assert exc_info.value.detail == "Пользователь не найден"
 
     def test_get_all_users(self, db_session, test_user):
         """
@@ -118,7 +118,7 @@ class TestUserService:
             service.delete_user(99999)
         
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert exc_info.value.detail == "User not found"
+        assert exc_info.value.detail == "Пользователь не найден"
 
     def test_delete_user_removes_from_db(self, db_session, test_user):
         """

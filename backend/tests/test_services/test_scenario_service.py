@@ -205,34 +205,32 @@ class TestScenarioService:
             service.get_scenario(99999, test_user.id)
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_get_scenario_increments_hits(self, db_session, test_user, test_scenario):
+    def test_get_scenario_does_not_increment_own_hits(self, db_session, test_user, test_scenario):
         """
-        Тест увеличения счетчика просмотров.
-        
-        Проверяет, что при каждом получении сценария
-        счетчик hits увеличивается на единицу.
+        Тест: GET сценария не увеличивает hits.
+
+        Hits инкрементируются только через record_view,
+        и только при просмотре чужого сценария.
         """
         service = ScenarioService(db_session)
         initial_hits = test_scenario.hits
-        
-        service.get_scenario(test_scenario.id, test_user.id)
-        
-        updated_scenario = service.scenario_repository.get_scenario_by_id(test_scenario.id)
-        assert updated_scenario.hits == initial_hits + 1
 
-    def test_get_scenario_creates_view_history(self, db_session, test_user, test_scenario):
+        service.get_scenario(test_scenario.id, test_user.id)
+
+        updated_scenario = service.scenario_repository.get_scenario_by_id(test_scenario.id)
+        assert updated_scenario.hits == initial_hits
+
+    def test_get_scenario_does_not_create_view_history(self, db_session, test_user, test_scenario):
         """
-        Тест создания записи истории при просмотре сценария.
-        
-        Проверяет, что при получении сценария автоматически
-        создается запись в истории с действием VIEW.
+        Тест: GET сценария не создаёт VIEW-запись в истории.
+
+        VIEW-история создаётся только через record_view.
         """
         service = ScenarioService(db_session)
         service.get_scenario(test_scenario.id, test_user.id)
-        
-        history, total = service.history_repository.get_history_by_user_id(test_user.id)
-        assert total > 0
-        assert any(h.action == ActionType.VIEW for h in history)
+
+        history, _ = service.history_repository.get_history_by_user_id(test_user.id)
+        assert not any(h.action == ActionType.VIEW for h in history)
 
     def test_get_user_scenarios_pagination(self, db_session, test_user):
         """
@@ -512,3 +510,145 @@ class TestScenarioService:
         assert scenario.metrics.closeness is not None
         assert scenario.metrics.degree is not None
         assert scenario.metrics.critical_nodes is not None
+
+
+class TestRecordView:
+    """Тесты для метода record_view"""
+
+    def test_record_view_increments_hits_for_other_user(self, db_session, test_user, test_user_2, test_scenario):
+        """Просмотр чужого сценария увеличивает счётчик hits."""
+        service = ScenarioService(db_session)
+        initial_hits = test_scenario.hits
+
+        service.record_view(test_scenario.id, user_id=test_user_2.id)
+        db_session.refresh(test_scenario)
+
+        assert test_scenario.hits == initial_hits + 1
+
+    def test_record_view_does_not_increment_own_scenario(self, db_session, test_user, test_scenario):
+        """Просмотр своего сценария не увеличивает счётчик hits."""
+        service = ScenarioService(db_session)
+        initial_hits = test_scenario.hits
+
+        service.record_view(test_scenario.id, user_id=test_user.id)
+        db_session.refresh(test_scenario)
+
+        assert test_scenario.hits == initial_hits
+
+    def test_record_view_idempotent(self, db_session, test_user, test_user_2, test_scenario):
+        """Повторный просмотр одного сценария тем же пользователем не увеличивает hits."""
+        service = ScenarioService(db_session)
+
+        service.record_view(test_scenario.id, user_id=test_user_2.id)
+        service.record_view(test_scenario.id, user_id=test_user_2.id)
+        db_session.refresh(test_scenario)
+
+        assert test_scenario.hits == 1
+
+    def test_record_view_creates_history(self, db_session, test_user, test_user_2, test_scenario):
+        """Просмотр чужого сценария создаёт запись истории с действием VIEW."""
+        service = ScenarioService(db_session)
+
+        service.record_view(test_scenario.id, user_id=test_user_2.id)
+        history, total = service.history_repository.get_history_by_user_id(test_user_2.id)
+
+        assert total > 0
+        assert any(h.action == ActionType.VIEW for h in history)
+
+    def test_record_view_own_scenario_no_history(self, db_session, test_user, test_scenario):
+        """Просмотр своего сценария не создаёт запись истории."""
+        service = ScenarioService(db_session)
+
+        service.record_view(test_scenario.id, user_id=test_user.id)
+        history, total = service.history_repository.get_history_by_user_id(test_user.id)
+
+        assert not any(h.action == ActionType.VIEW for h in history)
+
+    def test_record_view_nonexistent_scenario(self, db_session, test_user):
+        """Просмотр несуществующего сценария не вызывает ошибку."""
+        service = ScenarioService(db_session)
+        service.record_view(99999, user_id=test_user.id)  # не должно упасть
+
+
+class TestGetAllScenarios:
+    """Тесты для метода get_all_scenarios (публичные сценарии)"""
+
+    def test_returns_all_users_scenarios(self, db_session, test_user, test_user_2, test_scenario):
+        """Возвращает сценарии всех пользователей."""
+        from app.models.scenario import Scenario
+
+        scenario2 = Scenario(
+            user_id=test_user_2.id,
+            name="Other User Scenario",
+            district="tverskoy",
+            removed_nodes=[], removed_edges=[], added_nodes=[], added_edges=[], hits=0
+        )
+        db_session.add(scenario2)
+        db_session.commit()
+
+        service = ScenarioService(db_session)
+        result = service.get_all_scenarios(page=1, size=10)
+
+        assert result.total >= 2
+
+    def test_includes_author_name(self, db_session, test_user, test_scenario):
+        """Каждый сценарий содержит author_name."""
+        service = ScenarioService(db_session)
+        result = service.get_all_scenarios(page=1, size=10)
+
+        for item in result.items:
+            assert item.author_name is not None
+
+    def test_pagination_works(self, db_session, test_user):
+        """Пагинация возвращает корректное количество элементов."""
+        from app.models.scenario import Scenario
+
+        for i in range(12):
+            db_session.add(Scenario(
+                user_id=test_user.id,
+                name=f"Public {i}",
+                district="tverskoy",
+                removed_nodes=[], removed_edges=[], added_nodes=[], added_edges=[], hits=0
+            ))
+        db_session.commit()
+
+        service = ScenarioService(db_session)
+        page1 = service.get_all_scenarios(page=1, size=10)
+        assert len(page1.items) == 10
+        assert page1.pages >= 2
+
+
+class TestScenarioSorting:
+    """Тесты сортировки сценариев и истории по дате (новые первыми)"""
+
+    def test_user_scenarios_sorted_newest_first(self, db_session, test_user):
+        """Сценарии пользователя отсортированы по убыванию created_at."""
+        service = ScenarioService(db_session)
+
+        for name in ["First", "Second", "Third"]:
+            data = ScenarioCreate(
+                name=name,
+                district="tverskoy",
+                removed_nodes=[], removed_edges=[], added_nodes=[], added_edges=[]
+            )
+            service.save_scenario(test_user.id, data)
+
+        result = service.get_user_scenarios(test_user.id, page=1, size=10)
+        dates = [item.created_at for item in result.items]
+        assert dates == sorted(dates, reverse=True)
+
+    def test_history_sorted_newest_first(self, db_session, test_user):
+        """История пользователя отсортирована по убыванию created_at."""
+        service = ScenarioService(db_session)
+
+        for name in ["Alpha", "Beta", "Gamma"]:
+            data = ScenarioCreate(
+                name=name,
+                district="tverskoy",
+                removed_nodes=[], removed_edges=[], added_nodes=[], added_edges=[]
+            )
+            service.save_scenario(test_user.id, data)
+
+        history, total = service.history_repository.get_history_by_user_id(test_user.id)
+        dates = [h.created_at for h in history]
+        assert dates == sorted(dates, reverse=True)

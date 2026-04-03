@@ -160,7 +160,7 @@ class TestRegister:
         with pytest.raises(HTTPException) as exc_info:
             auth_service.register(valid_register_data)
         assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
-        assert "already registered" in exc_info.value.detail
+        assert "уже существует" in exc_info.value.detail
 
     def test_register_stores_all_fields(self, auth_service, valid_register_data):
         """
@@ -227,15 +227,13 @@ class TestLogin:
 
     def test_login_case_insensitive_email(self, auth_service, valid_register_data):
         """
-        Тест чувствительности email к регистру.
-        
-        Проверяет, что система требует точного
-        совпадения email (чувствительна к регистру).
+        Тест нечувствительности email к регистру.
+
+        Email приводится к нижнему регистру — логин с UPPER CASE должен работать.
         """
         auth_service.register(valid_register_data)
-        with pytest.raises(HTTPException) as exc_info:
-            auth_service.login("JOHN.AUTH@EXAMPLE.COM", "SecurePass123!")
-        assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+        result = auth_service.login("JOHN.AUTH@EXAMPLE.COM", "SecurePass123!")
+        assert result is not None
 
 
 class TestCreateAccessToken:

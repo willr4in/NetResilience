@@ -286,24 +286,23 @@ class TestScenarioRoutes:
         response = client_with_auth.get("/api/scenarios/99999")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_get_scenario_increments_hits(self, client_with_auth, test_scenario, db_session):
+    def test_get_scenario_does_not_increment_own_hits(self, client_with_auth, test_scenario, db_session):
         """
-        Тест увеличения счетчика просмотров.
-        
-        Проверяет, что при каждом получении сценария
-        счетчик hits увеличивается на единицу.
+        Тест: GET сценария не увеличивает hits.
+
+        Hits инкрементируются только через POST /view чужим пользователем.
         """
         from app.models.scenario import Scenario
-        
+
         initial_hits = test_scenario.hits
-        
+
         response = client_with_auth.get(f"/api/scenarios/{test_scenario.id}")
         assert response.status_code == status.HTTP_200_OK
-        
+
         updated_scenario = db_session.query(Scenario).filter(
             Scenario.id == test_scenario.id
         ).first()
-        assert updated_scenario.hits == initial_hits + 1
+        assert updated_scenario.hits == initial_hits
 
     def test_get_scenario_valid_schema(self, client_with_auth, test_scenario):
         """
@@ -616,24 +615,24 @@ class TestScenarioIntegration:
         scenario_ids = [s["id"] for s in data["items"]]
         assert scenario["id"] in scenario_ids
 
-    def test_hits_increment_on_multiple_views(self, client_with_auth, test_scenario):
+    def test_hits_increment_via_view_endpoint(
+        self, client_with_auth_user_2, test_scenario, db_session
+    ):
         """
-        Тест увеличения счетчика при многократных просмотрах.
-        
-        Проверяет, что каждый просмотр сценария увеличивает
-        счетчик hits на единицу.
+        Тест увеличения hits через POST /view.
+
+        Первый вызов от другого пользователя увеличивает hits,
+        повторный — нет (идемпотентность).
         """
         initial_hits = test_scenario.hits
-        
-        response1 = client_with_auth.get(f"/api/scenarios/{test_scenario.id}")
-        assert response1.status_code == status.HTTP_200_OK
-        data1 = response1.json()
-        assert data1["hits"] == initial_hits + 1
-        
-        response2 = client_with_auth.get(f"/api/scenarios/{test_scenario.id}")
-        assert response2.status_code == status.HTTP_200_OK
-        data2 = response2.json()
-        assert data2["hits"] == initial_hits + 2
+
+        client_with_auth_user_2.post(f"/api/scenarios/{test_scenario.id}/view")
+        db_session.refresh(test_scenario)
+        assert test_scenario.hits == initial_hits + 1
+
+        client_with_auth_user_2.post(f"/api/scenarios/{test_scenario.id}/view")
+        db_session.refresh(test_scenario)
+        assert test_scenario.hits == initial_hits + 1
 
     def test_user_isolation(self, client_with_auth, client_with_auth_user_2, test_scenario):
         """
@@ -688,3 +687,110 @@ class TestScenarioIntegration:
         assert scenario["removed_edges"] == valid_scenario_data["removed_edges"]
         assert scenario["added_nodes"] == valid_scenario_data["added_nodes"]
         assert scenario["added_edges"] == valid_scenario_data["added_edges"]
+
+
+class TestPublicScenariosRoute:
+    """Тесты для GET /api/scenarios/public"""
+
+    def test_public_scenarios_unauthorized(self, client):
+        """Запрос без токена возвращает 401."""
+        response = client.get("/api/scenarios/public")
+        assert response.status_code == 401
+
+    def test_public_scenarios_returns_all_users(
+        self, client_with_auth, test_scenario, test_scenario_other_user
+    ):
+        """Публичный список содержит сценарии обоих пользователей."""
+        response = client_with_auth.get("/api/scenarios/public")
+        assert response.status_code == 200
+
+        data = response.json()
+        ids = [s["id"] for s in data["items"]]
+        assert test_scenario.id in ids
+        assert test_scenario_other_user.id in ids
+
+    def test_public_scenarios_has_author_name(self, client_with_auth, test_scenario):
+        """Каждый сценарий в публичном списке содержит author_name."""
+        response = client_with_auth.get("/api/scenarios/public")
+        assert response.status_code == 200
+
+        for item in response.json()["items"]:
+            assert "author_name" in item
+            assert item["author_name"] is not None
+
+    def test_public_scenarios_pagination(self, client_with_auth, test_user, db_session):
+        """Пагинация публичного списка работает корректно."""
+        from app.models.scenario import Scenario
+
+        for i in range(12):
+            db_session.add(Scenario(
+                user_id=test_user.id,
+                name=f"Public {i}",
+                district="tverskoy",
+                removed_nodes=[], removed_edges=[], added_nodes=[], added_edges=[], hits=0
+            ))
+        db_session.commit()
+
+        response = client_with_auth.get("/api/scenarios/public?page=1&size=10")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 10
+        assert data["pages"] >= 2
+
+    def test_public_scenarios_schema(self, client_with_auth, test_scenario):
+        """Структура ответа содержит поля пагинации."""
+        response = client_with_auth.get("/api/scenarios/public")
+        assert response.status_code == 200
+        data = response.json()
+        for key in ("items", "total", "page", "size", "pages"):
+            assert key in data
+
+
+class TestViewScenarioRoute:
+    """Тесты для POST /api/scenarios/{id}/view"""
+
+    def test_view_unauthorized(self, client, test_scenario):
+        """Запрос без токена возвращает 401."""
+        response = client.post(f"/api/scenarios/{test_scenario.id}/view")
+        assert response.status_code == 401
+
+    def test_view_increments_hits_for_other_user(
+        self, client_with_auth_user_2, test_scenario, db_session
+    ):
+        """Просмотр чужого сценария увеличивает счётчик hits."""
+        initial_hits = test_scenario.hits
+        response = client_with_auth_user_2.post(f"/api/scenarios/{test_scenario.id}/view")
+        assert response.status_code == 200
+
+        db_session.refresh(test_scenario)
+        assert test_scenario.hits == initial_hits + 1
+
+    def test_view_does_not_increment_own_scenario(
+        self, client_with_auth, test_scenario, db_session
+    ):
+        """Просмотр своего сценария не увеличивает счётчик hits."""
+        initial_hits = test_scenario.hits
+        response = client_with_auth.post(f"/api/scenarios/{test_scenario.id}/view")
+        assert response.status_code == 200
+
+        db_session.refresh(test_scenario)
+        assert test_scenario.hits == initial_hits
+
+    def test_view_idempotent(self, client_with_auth_user_2, test_scenario, db_session):
+        """Повторный вызов view тем же пользователем не увеличивает hits второй раз."""
+        client_with_auth_user_2.post(f"/api/scenarios/{test_scenario.id}/view")
+        client_with_auth_user_2.post(f"/api/scenarios/{test_scenario.id}/view")
+
+        db_session.refresh(test_scenario)
+        assert test_scenario.hits == 1
+
+    def test_view_nonexistent_scenario(self, client_with_auth):
+        """Просмотр несуществующего сценария возвращает 200 (graceful ignore)."""
+        response = client_with_auth.post("/api/scenarios/99999/view")
+        assert response.status_code == 200
+
+    def test_view_returns_ok(self, client_with_auth_user_2, test_scenario):
+        """Ответ содержит {ok: true}."""
+        response = client_with_auth_user_2.post(f"/api/scenarios/{test_scenario.id}/view")
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}

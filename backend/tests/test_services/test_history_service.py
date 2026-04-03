@@ -402,7 +402,7 @@ class TestHistoryService:
             service.delete_history_record(99999)
         
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "not found" in exc_info.value.detail
+        assert "не найден" in exc_info.value.detail
 
     def test_delete_history_record_actually_removes(self, db_session, test_user, test_scenario):
         """

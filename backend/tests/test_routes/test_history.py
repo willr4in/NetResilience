@@ -556,21 +556,22 @@ class TestHistoryIntegration:
             save_actions = [h for h in data["items"] if h["action"] == "save"]
             assert len(save_actions) > 0
 
-    def test_history_created_on_scenario_view(self, client_with_auth, test_scenario):
+    def test_history_created_on_scenario_view(
+        self, client_with_auth, client_with_auth_user_2, test_scenario
+    ):
         """
-        Тест создания записи истории при просмотре сценария.
-        
-        Проверяет, что при получении сценария автоматически
-        создается запись в истории с действием VIEW.
+        Тест создания записи истории при просмотре чужого сценария.
+
+        VIEW-запись создаётся через POST /api/scenarios/{id}/view
+        только при просмотре чужого сценария другим пользователем.
         """
-        response = client_with_auth.get(f"/api/scenarios/{test_scenario.id}")
+        response = client_with_auth_user_2.post(f"/api/scenarios/{test_scenario.id}/view")
         assert response.status_code == status.HTTP_200_OK
-        
-        history_response = client_with_auth.get("/api/history")
+
+        history_response = client_with_auth_user_2.get("/api/history")
         assert history_response.status_code == status.HTTP_200_OK
-        
+
         data = history_response.json()
-        
         view_actions = [h for h in data["items"] if h["action"] == "view"]
         assert len(view_actions) > 0
 
