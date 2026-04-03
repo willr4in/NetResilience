@@ -1,5 +1,6 @@
 import json
 import time
+import math
 import networkx as nx
 from pathlib import Path
 from typing import Dict, Optional
@@ -11,6 +12,17 @@ from ..algorithms.centrality import calculate_all
 from ..algorithms.resilience import calculate_resilience, is_connected, largest_component_ratio, betweenness_concentration
 
 logger = logging.getLogger(__name__)
+
+
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Расстояние между двумя точками в км (формула Haversine). R=6371 — радиус Земли."""
+    R = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
 
 def district_exists(district: str) -> bool:
     path = Path(settings.DISTRICTS_DATA_PATH) / f"{district.lower()}.json"
@@ -74,9 +86,17 @@ def apply_changes(G: nx.Graph, changes: GraphChanges) -> nx.Graph:
 
     for edge in changes.added_edges:
         if len(edge) >= 2:
-            weight = float(edge[2]) if len(edge) > 2 else 1.0
-            G_modified.add_edge(edge[0], edge[1], weight=weight)
-            logger.debug(f"Added edge: {edge[0]} -> {edge[1]} (weight={weight})")
+            source, target = edge[0], edge[1]
+            if len(edge) > 2:
+                weight = float(edge[2])
+            elif G_modified.has_node(source) and G_modified.has_node(target):
+                s = G_modified.nodes[source]
+                t = G_modified.nodes[target]
+                weight = haversine(s["lat"], s["lon"], t["lat"], t["lon"])
+            else:
+                weight = 1.0
+            G_modified.add_edge(source, target, weight=weight)
+            logger.debug(f"Added edge: {source} -> {target} (weight={weight:.4f} km)")
 
     logger.info(
         f"Changes applied: "
