@@ -4,6 +4,9 @@ import type { Scenario, ScenarioCreate, ScenarioUpdate, ScenarioList } from '../
 export const getScenarios = (page = 1, size = 10) =>
   client.get<ScenarioList>('/scenarios', { params: { page, size } })
 
+export const getPublicScenarios = (page = 1, size = 10) =>
+  client.get<ScenarioList>('/scenarios/public', { params: { page, size } })
+
 export const getScenario = (id: number) =>
   client.get<Scenario>(`/scenarios/${id}`)
 
@@ -15,3 +18,6 @@ export const updateScenario = (id: number, data: ScenarioUpdate) =>
 
 export const deleteScenario = (id: number) =>
   client.delete(`/scenarios/${id}`)
+
+export const recordView = (id: number) =>
+  client.post(`/scenarios/${id}/view`)

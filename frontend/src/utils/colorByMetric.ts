@@ -11,9 +11,11 @@ export function nodeColor(
   nodeId: string,
   removedNodes: string[],
   criticalNodes: string[],
-  betweenness: Record<string, number>
+  betweenness: Record<string, number>,
+  isolatedNodes: string[] = []
 ): string {
   if (removedNodes.includes(nodeId)) return '#9ca3af' // серый — удалён
+  if (isolatedNodes.includes(nodeId)) return '#a855f7' // фиолетовый — изолирован
   if (criticalNodes.includes(nodeId)) return colorByBetweenness(betweenness[nodeId] ?? 0)
   return '#3b82f6' // синий — обычный
 }

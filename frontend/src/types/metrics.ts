@@ -3,6 +3,7 @@ export interface MetricResponse {
   closeness: Record<string, number>
   degree: Record<string, number>
   critical_nodes: string[]
+  isolated_nodes: string[]
 }
 
 export interface ResilienceComparison {

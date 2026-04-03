@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, Fragment } from 'react'
 import { Polyline } from 'react-leaflet'
 import { useGraphStore } from '../../store/graphStore'
 import { getEdgePositions } from '../../utils/normalizeGraphData'
@@ -8,11 +8,14 @@ import type { NodeMap } from '../../utils/normalizeGraphData'
 interface Props {
   edges: EdgeSchema[]
   nodeMap: NodeMap
+  addedEdges: string[][]
+  extendedNodeMap: NodeMap
 }
 
-function EdgeLayer({ edges, nodeMap }: Props) {
+function EdgeLayer({ edges, nodeMap, addedEdges, extendedNodeMap }: Props) {
   const removedEdges = useGraphStore((s) => s.removedEdges)
   const toggleEdge = useGraphStore((s) => s.toggleEdge)
+  const mapMode = useGraphStore((s) => s.mapMode)
 
   return (
     <>
@@ -25,9 +28,8 @@ function EdgeLayer({ edges, nodeMap }: Props) {
         )
 
         return (
-          <>
+          <Fragment key={`${edge.source}-${edge.target}`}>
             <Polyline
-              key={`${edge.source}-${edge.target}`}
               positions={positions}
               pathOptions={{
                 color: isRemoved ? '#ef4444' : '#64748b',
@@ -37,16 +39,24 @@ function EdgeLayer({ edges, nodeMap }: Props) {
               }}
             />
             <Polyline
-              key={`${edge.source}-${edge.target}-hit`}
               positions={positions}
-              pathOptions={{
-                color: 'transparent',
-                weight: 12,
-                opacity: 0,
-              }}
-              eventHandlers={{ click: () => toggleEdge(edge.source, edge.target) }}
+              pathOptions={{ color: 'transparent', weight: 12, opacity: 0 }}
+              eventHandlers={mapMode === 'delete' ? { click: () => toggleEdge(edge.source, edge.target) } : {}}
             />
-          </>
+          </Fragment>
+        )
+      })}
+
+      {addedEdges.map(([source, target]) => {
+        const positions = getEdgePositions(source, target, extendedNodeMap)
+        if (!positions) return null
+
+        return (
+          <Polyline
+            key={`added-${source}-${target}`}
+            positions={positions}
+            pathOptions={{ color: '#22c55e', weight: 2, opacity: 0.8, dashArray: '6 4' }}
+          />
         )
       })}
     </>

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useGraphStore } from '../store/graphStore'
-import { getGraph, calculate } from '../api/graph'
+import { getGraph, calculate, simulateCascade } from '../api/graph'
 import { createScenario } from '../api/scenarios'
 import { extractChanges } from '../utils/normalizeGraphData'
 import { DISTRICT } from '../constants/map'
 import GraphMap from '../components/map/GraphMap'
 import MapControls from '../components/map/MapControls'
+import ModeToolbar from '../components/map/ModeToolbar'
+import MapLegend from '../components/map/MapLegend'
 import Sidebar from '../components/layout/Sidebar'
 import ResiliencePanel from '../components/panels/ResiliencePanel'
 import MetricsPanel from '../components/panels/MetricsPanel'
@@ -16,9 +18,11 @@ import LoadingSpinner from '../components/common/LoadingSpinner'
 import type { GraphSchema } from '../types/graph'
 
 export default function MapPage() {
-  const { setGraph, setAnalysisResult, setCalculating, setLoading } = useGraphStore()
+  const { setGraph, setAnalysisResult, setCascadeResult, setCalculating, setLoading } = useGraphStore()
   const removedNodes = useGraphStore((s) => s.removedNodes)
   const removedEdges = useGraphStore((s) => s.removedEdges)
+  const addedNodes = useGraphStore((s) => s.addedNodes)
+  const addedEdges = useGraphStore((s) => s.addedEdges)
   const analysisResult = useGraphStore((s) => s.analysisResult)
   const isLoading = useGraphStore((s) => s.isLoading)
   const location = useLocation()
@@ -39,6 +43,8 @@ export default function MapPage() {
         if (scenario) {
           scenario.removed_nodes.forEach((id: string) => useGraphStore.getState().toggleNode(id))
           scenario.removed_edges.forEach(([s, t]: string[]) => useGraphStore.getState().toggleEdge(s, t))
+          scenario.added_nodes.forEach((n: any) => useGraphStore.getState().addNode(n))
+          scenario.added_edges.forEach(([s, t]: string[]) => useGraphStore.getState().addEdge(s, t))
         }
       } finally {
         setLoading(false)
@@ -51,9 +57,19 @@ export default function MapPage() {
     if (!graphSchema) return
     setCalculating(true)
     try {
-      const changes = extractChanges(graphSchema, removedNodes, removedEdges)
+      const changes = extractChanges(graphSchema, removedNodes, removedEdges, addedNodes, addedEdges)
       const { data } = await calculate(changes)
       setAnalysisResult(data)
+    } finally {
+      setCalculating(false)
+    }
+  }
+
+  const handleCascade = async (steps: number) => {
+    setCalculating(true)
+    try {
+      const { data } = await simulateCascade({ district: DISTRICT, steps })
+      setCascadeResult(data)
     } finally {
       setCalculating(false)
     }
@@ -68,8 +84,8 @@ export default function MapPage() {
         district: graphSchema.metadata.district,
         removed_nodes: removedNodes,
         removed_edges: removedEdges,
-        added_nodes: [],
-        added_edges: [],
+        added_nodes: addedNodes,
+        added_edges: addedEdges,
       })
       setSaveModalOpen(false)
       setSaveName('')
@@ -97,8 +113,11 @@ export default function MapPage() {
     <div className="flex h-full relative">
       <div className="flex-1 relative">
         <GraphMap />
+        <ModeToolbar />
+        <MapLegend />
         <MapControls
           onCalculate={handleCalculate}
+          onCascade={handleCascade}
           onSave={() => setSaveModalOpen(true)}
         />
       </div>

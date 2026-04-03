@@ -25,13 +25,17 @@ function HistoryDetails({ record }: { record: HistoryRecord }) {
     const name = (d.scenario_name ?? record.scenario_name) as string | null
     const nodes = d.removed_nodes_count as number | null
     const edges = d.removed_edges_count as number | null
+    const addedNodes = d.added_nodes_count as number | null
+    const addedEdges = d.added_edges_count as number | null
     const score = d.resilience_score as number | null
     return (
       <div className="flex-1 min-w-0">
         {name && <p className="text-sm text-gray-700 truncate">«{name}»</p>}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
           {nodes != null && <span>Удалено узлов: {nodes}</span>}
-          {edges != null && <span>Рёбер: {edges}</span>}
+          {edges != null && <span>Удалено рёбер: {edges}</span>}
+          {addedNodes != null && addedNodes > 0 && <span>Добавлено узлов: {addedNodes}</span>}
+          {addedEdges != null && addedEdges > 0 && <span>Добавлено рёбер: {addedEdges}</span>}
           {score != null && <span>Resilience: {score}%</span>}
         </div>
         <p className="text-xs text-gray-300 mt-0.5">{formatDateTime(record.created_at)}</p>

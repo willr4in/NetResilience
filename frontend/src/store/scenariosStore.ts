@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type { Scenario } from '../types/scenario'
-import { useGraphStore } from './graphStore'
 
 interface ScenariosState {
   scenarios: Scenario[]
@@ -8,7 +7,6 @@ interface ScenariosState {
   page: number
   pages: number
   setScenarios: (scenarios: Scenario[], total: number, pages: number, page: number) => void
-  loadScenario: (scenario: Scenario) => void
 }
 
 export const useScenariosStore = create<ScenariosState>((set) => ({
@@ -17,10 +15,4 @@ export const useScenariosStore = create<ScenariosState>((set) => ({
   page: 1,
   pages: 1,
   setScenarios: (scenarios, total, pages, page) => set({ scenarios, total, pages, page }),
-  loadScenario: (scenario: Scenario) => {
-    useGraphStore.getState().setPendingScenario({
-      removedNodes: scenario.removed_nodes,
-      removedEdges: scenario.removed_edges,
-    })
-  },
 }))

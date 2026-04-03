@@ -9,6 +9,7 @@ export interface Scenario {
   added_nodes: { id: string; label: string; lat: number; lon: number }[]
   added_edges: string[][]
   metrics: Record<string, unknown> | null
+  author_name: string | null
   hits: number
   created_at: string
   last_used_at: string

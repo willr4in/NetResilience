@@ -30,12 +30,18 @@ export function getGraphBounds(nodes: NodeSchema[]): [[number, number], [number,
   ]
 }
 
-export function extractChanges(graph: GraphSchema, removedNodes: string[], removedEdges: string[][]) {
+export function extractChanges(
+  graph: GraphSchema,
+  removedNodes: string[],
+  removedEdges: string[][],
+  addedNodes: { id: string; lat: number; lon: number; label: string; node_type: string }[] = [],
+  addedEdges: string[][] = [],
+) {
   return {
     district: graph.metadata.district,
     removed_nodes: removedNodes,
     removed_edges: removedEdges,
-    added_nodes: [],
-    added_edges: [],
+    added_nodes: addedNodes,
+    added_edges: addedEdges,
   }
 }
