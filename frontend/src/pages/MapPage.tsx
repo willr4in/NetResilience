@@ -45,6 +45,16 @@ export default function MapPage() {
           scenario.removed_edges.forEach(([s, t]: string[]) => useGraphStore.getState().toggleEdge(s, t))
           scenario.added_nodes.forEach((n: any) => useGraphStore.getState().addNode(n))
           scenario.added_edges.forEach(([s, t]: string[]) => useGraphStore.getState().addEdge(s, t))
+
+          setCalculating(true)
+          try {
+            const { removedNodes, removedEdges, addedNodes, addedEdges } = useGraphStore.getState()
+            const changes = extractChanges(data, removedNodes, removedEdges, addedNodes, addedEdges)
+            const { data: result } = await calculate(changes)
+            setAnalysisResult(result)
+          } finally {
+            setCalculating(false)
+          }
         }
       } finally {
         setLoading(false)
@@ -68,7 +78,14 @@ export default function MapPage() {
   const handleCascade = async (steps: number) => {
     setCalculating(true)
     try {
-      const { data } = await simulateCascade({ district: DISTRICT, steps })
+      const { data } = await simulateCascade({
+        district: DISTRICT,
+        steps,
+        removed_nodes: removedNodes,
+        removed_edges: removedEdges,
+        added_nodes: addedNodes,
+        added_edges: addedEdges,
+      })
       setCascadeResult(data)
     } finally {
       setCalculating(false)

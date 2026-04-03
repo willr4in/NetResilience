@@ -34,4 +34,8 @@ export interface GraphChanges {
 export interface CascadeRequest {
   district: string
   steps: number
+  removed_nodes?: string[]
+  removed_edges?: string[][]
+  added_nodes?: Record<string, any>[]
+  added_edges?: string[][]
 }
