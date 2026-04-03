@@ -52,6 +52,10 @@ class GraphAnalysisResponse(BaseModel):
 class CascadeRequest(BaseModel):
     district: str = Field(..., description="District name")
     steps: int = Field(10, ge=1, le=100, description="Number of cascade steps (1–100)")
+    removed_nodes: List[str] = Field(default_factory=list)
+    removed_edges: List[List[str]] = Field(default_factory=list)
+    added_nodes: List[Dict[str, Any]] = Field(default_factory=list)
+    added_edges: List[List[str]] = Field(default_factory=list)
 
 
 class CascadeStep(BaseModel):

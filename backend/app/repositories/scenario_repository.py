@@ -34,6 +34,7 @@ class ScenarioRepository:
         scenarios = (
             self.db.query(Scenario)
             .filter(Scenario.user_id == user_id)
+            .order_by(Scenario.created_at.desc())
             .offset((page - 1) * size)
             .limit(size)
             .all()

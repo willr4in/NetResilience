@@ -208,6 +208,20 @@ def simulate_cascade(request: CascadeRequest) -> CascadeResponse:
 
     _, G = load_graph(request.district)
 
+    has_changes = (
+        request.removed_nodes or request.removed_edges or
+        request.added_nodes or request.added_edges
+    )
+    if has_changes:
+        changes = GraphChanges(
+            district=request.district,
+            removed_nodes=request.removed_nodes,
+            removed_edges=request.removed_edges,
+            added_nodes=request.added_nodes,
+            added_edges=request.added_edges,
+        )
+        G = apply_changes(G, changes)
+
     initial_centrality = calculate_all(G)
     betweenness_original = initial_centrality.get("betweenness", {})
 

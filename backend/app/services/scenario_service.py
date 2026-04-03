@@ -76,6 +76,8 @@ class ScenarioService:
         scenario = self.scenario_repository.get_scenario_by_id(scenario_id)
         if not scenario:
             return
+        if scenario.user_id == user_id:
+            return
         already_viewed = self.history_repository.has_user_viewed_scenario(user_id, scenario_id)
         if not already_viewed:
             self.scenario_repository.increment_hits(scenario_id)
