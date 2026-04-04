@@ -5,15 +5,31 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
 
 from app.main import app
 from app.database import Base, get_db
+import app.cache as cache_module
 
 
 @pytest.fixture(scope="session")
 def postgres_container():
     with PostgresContainer("postgres:15-alpine") as postgres:
         yield postgres
+
+
+@pytest.fixture(scope="session")
+def redis_container():
+    with RedisContainer("redis:7-alpine") as redis:
+        yield redis
+
+
+@pytest.fixture(scope="function")
+def redis_setup(redis_container):
+    """Подключает тестовый Redis напрямую через синглтон."""
+    cache_module._client = redis_container.get_client(decode_responses=True)
+    yield
+    cache_module._client = None
 
 
 @pytest.fixture(scope="session")
