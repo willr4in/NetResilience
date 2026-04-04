@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     ENABLE_CACHE: bool = True
     CACHE_HITS_THRESHOLD: int = 10
 
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_TTL_GRAPH: int = 3600
+    REDIS_TTL_ANALYSIS: int = 300
+    REDIS_TTL_CASCADE: int = 300
+
     DISTRICTS_DATA_PATH: str = "app/data/districts"
     SAMPLE_GRAPHS_PATH: str = "app/data/sample_graphs"
 
