@@ -148,6 +148,9 @@ export default function MapPage() {
               criticalNodes={analysisResult.metrics.critical_nodes}
               betweenness={analysisResult.metrics.betweenness}
             />
+            <p className="text-xs text-gray-400 text-right px-4 py-2">
+              Рассчитано за {analysisResult.calculation_time_ms.toFixed(0)} мс
+            </p>
           </>
         )}
         <CascadePanel />

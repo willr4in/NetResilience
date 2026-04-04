@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { MapContainer, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import { useGraphStore } from '../../store/graphStore'
 import { buildNodeMap, getGraphBounds } from '../../utils/normalizeGraphData'
-import { DEFAULT_CENTER, DEFAULT_ZOOM, TILE_URL, TILE_ATTRIBUTION } from '../../constants/map'
+import { DEFAULT_CENTER, DEFAULT_ZOOM, TILE_URL } from '../../constants/map'
 import NodeLayer from './NodeLayer'
 import EdgeLayer from './EdgeLayer'
 import 'leaflet/dist/leaflet.css'
@@ -64,7 +64,7 @@ export default function GraphMap() {
       zoomControl={false}
     >
       <ZoomControl zoomInTitle="Приблизить" zoomOutTitle="Отдалить" />
-      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+      <TileLayer url={TILE_URL} attribution="" />
       <BoundsUpdater />
       <MapClickHandler />
       <EdgeLayer edges={edges} nodeMap={nodeMap} addedEdges={addedEdges} extendedNodeMap={extendedNodeMap} />

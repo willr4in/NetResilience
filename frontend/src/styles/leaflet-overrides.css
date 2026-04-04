@@ -19,6 +19,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
+.leaflet-control-attribution {
+  display: none !important;
+}
+
 .leaflet-tooltip {
   border-radius: 6px;
   font-size: 12px;
