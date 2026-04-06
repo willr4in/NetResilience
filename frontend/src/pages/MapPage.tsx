@@ -127,19 +127,17 @@ export default function MapPage() {
   }
 
   return (
-    <div className="flex h-full relative">
-      <div className="flex-1 relative">
-        <GraphMap />
-        <ModeToolbar />
-        <MapLegend />
-        <MapControls
-          onCalculate={handleCalculate}
-          onCascade={handleCascade}
-          onSave={() => setSaveModalOpen(true)}
-        />
-      </div>
+    <div className="h-full relative overflow-hidden">
+      <GraphMap />
+      <ModeToolbar />
+      <MapLegend />
+      <MapControls
+        onCalculate={handleCalculate}
+        onCascade={handleCascade}
+        onSave={() => setSaveModalOpen(true)}
+      />
 
-      <Sidebar>
+      <Sidebar visible={!!analysisResult}>
         {analysisResult && (
           <>
             <ResiliencePanel resilience={analysisResult.resilience} />
