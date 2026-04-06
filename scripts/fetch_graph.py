@@ -1,29 +1,52 @@
 import osmnx as ox
+import networkx as nx
 import json
 from pathlib import Path
+from shapely.ops import unary_union
 
-def fetch_tver_district():
-    
-    G = ox.graph_from_place(
-        "Тверской район, Москва, Россия",
-        network_type="drive",
-        simplify=True
-    )
-    
-    print(f"Загружено: {len(G.nodes())} узлов, {len(G.edges())} рёбер")
-    
-    nodes = []
-    for node_id, data in G.nodes(data=True):
-        nodes.append({
+DISTRICTS = [
+    "Тверской район, Москва, Россия",
+    "Marina Roshcha, Moscow, Russia",
+    "Савёловский район, Москва, Россия",
+    "Беговой, Москва, Россия",
+    "Сокол, Москва, Россия",
+    "Аэропорт, Москва, Россия",
+]
+
+OUTPUT_PATH = Path("../backend/app/data/districts/compare.json")
+
+
+def fetch_union_polygon():
+    polygons = []
+    for district in DISTRICTS:
+        print(f"  Загрузка: {district}...")
+        try:
+            gdf = ox.geocode_to_gdf(district)
+            geom = gdf.geometry.values[0]
+            G_part = ox.graph_from_polygon(geom, network_type="drive", simplify=True)
+            print(f"    {G_part.number_of_nodes()} узлов, {G_part.number_of_edges()} рёбер")
+            polygons.append(geom)
+        except Exception as e:
+            print(f"    ОШИБКА: {e}")
+    if not polygons:
+        raise RuntimeError("Не удалось геокодировать ни один район")
+    return unary_union(polygons)
+
+
+def build_graph_data(G: nx.Graph) -> dict:
+    nodes = [
+        {
             "id": str(node_id),
             "label": str(node_id),
             "lat": data["y"],
             "lon": data["x"],
-            "routes": []
-        })
-    
+            "routes": [],
+        }
+        for node_id, data in G.nodes(data=True)
+    ]
+
+    seen: set[tuple] = set()
     edges = []
-    seen = set()
     for u, v, data in G.edges(data=True):
         key = tuple(sorted([str(u), str(v)]))
         if key not in seen:
@@ -31,27 +54,36 @@ def fetch_tver_district():
             edges.append({
                 "source": str(u),
                 "target": str(v),
-                "weight": round(data.get("length", 1.0) / 1000, 4)  
+                "weight": round(data.get("length", 1.0) / 1000, 4),
             })
-    
-    graph_data = {
+
+    return {
         "metadata": {
-            "name": "Тверской район",
+            "name": "Тверской, Марьина Роща, Савёловский, Беговой, Сокол, Аэропорт",
             "city": "Москва",
-            "district": "tverskoy"
+            "district": "compare",
         },
         "nodes": nodes,
-        "edges": edges
+        "edges": edges,
     }
-    
-    output_path = Path("../backend/app/data/districts/tverskoy.json")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(output_path, "w", encoding="utf-8") as f:
+
+
+def main():
+    print("Загрузка графа районов Москвы...")
+    polygon = fetch_union_polygon()
+    print("Загрузка дорожного графа из объединённого полигона...")
+    G = ox.graph_from_polygon(polygon, network_type="drive", simplify=True)
+    print(f"Загружено: {G.number_of_nodes()} узлов, {G.number_of_edges()} рёбер")
+
+    graph_data = build_graph_data(G)
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(graph_data, f, ensure_ascii=False, indent=2)
-    
-    print(f"Сохранено в {output_path}")
-    print(f"Узлов: {len(nodes)}, Рёбер: {len(edges)}")
+
+    print(f"Сохранено: {OUTPUT_PATH}")
+    print(f"Узлов: {len(graph_data['nodes'])}, Рёбер: {len(graph_data['edges'])}")
+
 
 if __name__ == "__main__":
-    fetch_tver_district()
+    main()
