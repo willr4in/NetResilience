@@ -49,7 +49,7 @@ interface GraphState {
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
-  district: 'tverskoy',
+  district: 'compare',
   nodes: [],
   edges: [],
   removedNodes: [],
