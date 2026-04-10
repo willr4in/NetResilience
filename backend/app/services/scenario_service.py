@@ -5,9 +5,12 @@ from ..schemas.scenario import ScenarioCreate, ScenarioResponse, ScenarioUpdate,
 from ..schemas.graph import GraphChanges
 from ..schemas.history import HistoryCreate, ActionType
 from ..services.graph_service import analyze, district_exists
+from ..services import cache_service
+from ..config import settings
 from fastapi import HTTPException, status
 import logging
 import math
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -32,23 +35,35 @@ class ScenarioService:
             added_edges=scenario_data.added_edges
         )
 
-        try:
-            analysis = analyze(changes)
-        except FileNotFoundError:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Граф для района '{scenario_data.district}' не найден"
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=str(e)
-            )
+        key = cache_service.make_analysis_key(changes.model_dump())
+        t0 = time.monotonic()
+        cached = cache_service.get(key)
+        if cached is not None:
+            metrics_data = cached["metrics"]
+            resilience_score = cached.get("resilience", {}).get("resilience_score", 0)
+            calc_time_ms = round((time.monotonic() - t0) * 1000, 2)
+        else:
+            try:
+                analysis = analyze(changes)
+            except FileNotFoundError:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Граф для района '{scenario_data.district}' не найден"
+                )
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(e)
+                )
+            cache_service.set(key, analysis.model_dump(), settings.REDIS_TTL_ANALYSIS)
+            metrics_data = analysis.metrics.model_dump()
+            resilience_score = analysis.resilience.get("resilience_score", 0)
+            calc_time_ms = analysis.calculation_time_ms
 
         scenario = self.scenario_repository.create_scenario(
             user_id=user_id,
             scenario_data=scenario_data,
-            metrics=analysis.metrics.model_dump()
+            metrics=metrics_data
         )
 
         self.history_repository.create_history(
@@ -63,9 +78,9 @@ class ScenarioService:
                     "removed_edges_count": len(scenario_data.removed_edges),
                     "added_nodes_count": len(scenario_data.added_nodes),
                     "added_edges_count": len(scenario_data.added_edges),
-                    "resilience_score": round(analysis.resilience.get("resilience_score", 0) * 100, 1),
+                    "resilience_score": round(resilience_score * 100, 1),
                 },
-                calculation_time_ms=analysis.calculation_time_ms
+                calculation_time_ms=calc_time_ms
             )
         )
 
