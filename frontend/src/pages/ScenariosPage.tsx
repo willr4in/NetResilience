@@ -146,7 +146,7 @@ export default function ScenariosPage() {
       {!isLoading && activeScenarios.length === 0 && (
         <div className="text-sm text-gray-400 py-12 text-center">
           {tab === 'my'
-            ? 'Сохранённых сценариев нет. Перейдите на карту и нажмите «Сохранить».'
+            ? 'Сохранённых сценариев пока нет. Перейдите на карту и создайте свой первый сценарий!'
             : 'Пока нет публичных сценариев.'}
         </div>
       )}
