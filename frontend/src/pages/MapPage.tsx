@@ -24,6 +24,7 @@ export default function MapPage() {
   const addedNodes = useGraphStore((s) => s.addedNodes)
   const addedEdges = useGraphStore((s) => s.addedEdges)
   const analysisResult = useGraphStore((s) => s.analysisResult)
+  const cascadeResult = useGraphStore((s) => s.cascadeResult)
   const isLoading = useGraphStore((s) => s.isLoading)
   const location = useLocation()
 
@@ -137,7 +138,7 @@ export default function MapPage() {
         onSave={() => setSaveModalOpen(true)}
       />
 
-      <Sidebar visible={!!analysisResult}>
+      <Sidebar visible={!!analysisResult || !!cascadeResult}>
         {analysisResult && (
           <>
             <ResiliencePanel resilience={analysisResult.resilience} />

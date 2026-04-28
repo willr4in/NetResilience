@@ -40,7 +40,7 @@ interface GraphState {
   addEdge: (source: string, target: string) => void
   undoLastAdd: () => void
   resetChanges: () => void
-  setAnalysisResult: (result: GraphAnalysisResponse) => void
+  setAnalysisResult: (result: GraphAnalysisResponse | null) => void
   setCascadeResult: (result: CascadeResponse | null) => void
   setLoading: (value: boolean) => void
   setCalculating: (value: boolean) => void

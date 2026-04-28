@@ -1,4 +1,5 @@
 import type { ResilienceMetrics } from '../../types/metrics'
+import { useGraphStore } from '../../store/graphStore'
 
 interface Props {
   resilience: ResilienceMetrics
@@ -19,10 +20,18 @@ function ScoreBar({ value }: { value: number }) {
 
 export default function ResiliencePanel({ resilience }: Props) {
   const { resilience_score, connected, largest_component_ratio, betweenness_concentration, comparison } = resilience
+  const setAnalysisResult = useGraphStore((s) => s.setAnalysisResult)
 
   return (
     <div className="p-4 border-b border-gray-200">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">Устойчивость сети</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-700">Устойчивость сети</h3>
+        <button
+          onClick={() => setAnalysisResult(null)}
+          className="text-gray-400 hover:text-gray-600 text-xs"
+          title="Закрыть"
+        >✕</button>
+      </div>
 
       <div className="mb-3">
         <div className="flex justify-between text-xs text-gray-500 mb-1">
