@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useGraphStore } from '../store/graphStore'
-import { getGraph, calculate, simulateCascade } from '../api/graph'
+import { getGraph, calculate, simulateCascade, findRoute } from '../api/graph'
+import { isAbortError } from '../api/client'
 import { createScenario } from '../api/scenarios'
 import { extractChanges } from '../utils/normalizeGraphData'
 import { DISTRICT } from '../constants/map'
 import GraphMap from '../components/map/GraphMap'
 import MapControls from '../components/map/MapControls'
 import ModeToolbar from '../components/map/ModeToolbar'
+import ViewToolbar from '../components/map/ViewToolbar'
 import MapLegend from '../components/map/MapLegend'
 import Sidebar from '../components/layout/Sidebar'
 import ResiliencePanel from '../components/panels/ResiliencePanel'
 import MetricsPanel from '../components/panels/MetricsPanel'
 import CriticalNodes from '../components/panels/CriticalNodes'
 import CascadePanel from '../components/panels/CascadePanel'
+import RoutePanel from '../components/panels/RoutePanel'
 import LoadingSpinner from '../components/common/LoadingSpinner'
+import { exportScenarioPdf } from '../utils/exportPdf'
 import type { GraphSchema } from '../types/graph'
 
 export default function MapPage() {
-  const { setGraph, setAnalysisResult, setCascadeResult, setCalculating, setLoading } = useGraphStore()
+  const { setGraph, setAnalysisResult, setCascadeResult, setCalculating, setLoading, setScenarioMeta } = useGraphStore()
   const removedNodes = useGraphStore((s) => s.removedNodes)
   const removedEdges = useGraphStore((s) => s.removedEdges)
   const addedNodes = useGraphStore((s) => s.addedNodes)
@@ -26,12 +30,21 @@ export default function MapPage() {
   const analysisResult = useGraphStore((s) => s.analysisResult)
   const cascadeResult = useGraphStore((s) => s.cascadeResult)
   const isLoading = useGraphStore((s) => s.isLoading)
+  const mapMode = useGraphStore((s) => s.mapMode)
+  const routeFrom = useGraphStore((s) => s.routeFrom)
+  const routeTo = useGraphStore((s) => s.routeTo)
+  const setRouteResult = useGraphStore((s) => s.setRouteResult)
+  const scenarioMeta = useGraphStore((s) => s.scenarioMeta)
   const location = useLocation()
 
   const [graphSchema, setGraphSchema] = useState<GraphSchema | null>(null)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
+  const [saveDescription, setSaveDescription] = useState('')
   const [saveError, setSaveError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [isRouting, setIsRouting] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +59,7 @@ export default function MapPage() {
           scenario.removed_edges.forEach(([s, t]: string[]) => useGraphStore.getState().toggleEdge(s, t))
           scenario.added_nodes.forEach((n: any) => useGraphStore.getState().addNode(n))
           scenario.added_edges.forEach(([s, t]: string[]) => useGraphStore.getState().addEdge(s, t))
+          setScenarioMeta(scenario.name, scenario.description ?? null)
 
           setCalculating(true)
           try {
@@ -53,10 +67,14 @@ export default function MapPage() {
             const changes = extractChanges(data, removedNodes, removedEdges, addedNodes, addedEdges)
             const { data: result } = await calculate(changes)
             setAnalysisResult(result)
+          } catch (err) {
+            if (!isAbortError(err)) throw err
           } finally {
             setCalculating(false)
           }
         }
+      } catch (err) {
+        if (!isAbortError(err)) throw err
       } finally {
         setLoading(false)
       }
@@ -71,6 +89,8 @@ export default function MapPage() {
       const changes = extractChanges(graphSchema, removedNodes, removedEdges, addedNodes, addedEdges)
       const { data } = await calculate(changes)
       setAnalysisResult(data)
+    } catch (err) {
+      if (!isAbortError(err)) throw err
     } finally {
       setCalculating(false)
     }
@@ -88,17 +108,55 @@ export default function MapPage() {
         added_edges: addedEdges,
       })
       setCascadeResult(data)
+    } catch (err) {
+      if (!isAbortError(err)) throw err
     } finally {
       setCalculating(false)
     }
   }
 
+  const handleBuildRoute = async () => {
+    if (!routeFrom || !routeTo) return
+    setIsRouting(true)
+    try {
+      const { data } = await findRoute({
+        district: DISTRICT,
+        from_lat: routeFrom.lat,
+        from_lon: routeFrom.lon,
+        to_lat: routeTo.lat,
+        to_lon: routeTo.lon,
+        removed_nodes: removedNodes,
+        removed_edges: removedEdges,
+        added_nodes: addedNodes,
+        added_edges: addedEdges,
+      })
+      setRouteResult({
+        found: data.found,
+        path: data.path,
+        distance_km: data.distance_km,
+        drive_time_minutes: data.drive_time_minutes,
+        walk_time_minutes: data.walk_time_minutes,
+        total_time_minutes: data.total_time_minutes,
+        snap_from: data.snap_from,
+        snap_to: data.snap_to,
+        snap_from_distance_km: data.snap_from_distance_km,
+        snap_to_distance_km: data.snap_to_distance_km,
+      })
+    } catch (err) {
+      if (!isAbortError(err)) throw err
+    } finally {
+      setIsRouting(false)
+    }
+  }
+
   const handleSave = async () => {
-    if (!graphSchema || !saveName.trim()) return
+    if (!graphSchema || !saveName.trim() || isSaving) return
     setSaveError('')
+    setIsSaving(true)
     try {
       await createScenario({
         name: saveName.trim(),
+        description: saveDescription.trim() || undefined,
         district: graphSchema.metadata.district,
         removed_nodes: removedNodes,
         removed_edges: removedEdges,
@@ -107,6 +165,7 @@ export default function MapPage() {
       })
       setSaveModalOpen(false)
       setSaveName('')
+      setSaveDescription('')
     } catch (err: any) {
       const detail = err?.response?.data?.detail
       if (Array.isArray(detail)) {
@@ -116,6 +175,28 @@ export default function MapPage() {
       } else {
         setSaveError('Ошибка при сохранении')
       }
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    if (!graphSchema || !analysisResult || !scenarioMeta || isExporting) return
+    setIsExporting(true)
+    try {
+      await exportScenarioPdf({
+        scenarioName: scenarioMeta.name,
+        description: scenarioMeta.description,
+        district: graphSchema.metadata.district,
+        analysis: analysisResult,
+        cascade: cascadeResult,
+        removedCount: removedNodes.length + removedEdges.length,
+        addedCount: addedNodes.length + addedEdges.length,
+      })
+    } catch (e) {
+      console.error('PDF export failed:', e)
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -131,6 +212,7 @@ export default function MapPage() {
     <div className="h-full relative overflow-hidden">
       <GraphMap />
       <ModeToolbar />
+      <ViewToolbar />
       <MapLegend />
       <MapControls
         onCalculate={handleCalculate}
@@ -138,7 +220,8 @@ export default function MapPage() {
         onSave={() => setSaveModalOpen(true)}
       />
 
-      <Sidebar visible={!!analysisResult || !!cascadeResult}>
+      <Sidebar visible={!!analysisResult || !!cascadeResult || mapMode === 'route' || !!routeFrom || !!routeTo}>
+        <RoutePanel onBuild={handleBuildRoute} isBuilding={isRouting} />
         {analysisResult && (
           <>
             <ResiliencePanel resilience={analysisResult.resilience} />
@@ -153,34 +236,55 @@ export default function MapPage() {
           </>
         )}
         <CascadePanel />
+        {analysisResult && scenarioMeta && (
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={handleExportPdf}
+              disabled={isExporting}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              {isExporting ? 'Формируется PDF…' : 'Скачать PDF-отчёт'}
+            </button>
+          </div>
+        )}
       </Sidebar>
 
       {saveModalOpen && (
         <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-80">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-96">
             <h2 className="text-base font-semibold text-gray-800 mb-4">Сохранить сценарий</h2>
             <input
               type="text"
               placeholder="Название сценария"
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isSaving}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+            />
+            <textarea
+              placeholder="Краткое описание (необязательно)"
+              value={saveDescription}
+              onChange={(e) => setSaveDescription(e.target.value)}
+              disabled={isSaving}
+              rows={3}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:bg-gray-50"
             />
             {saveError && <p className="text-xs text-red-500 mb-3">{saveError}</p>}
             {!saveError && <div className="mb-3" />}
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setSaveModalOpen(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                disabled={isSaving}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:text-gray-300"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSave}
-                disabled={!saveName.trim()}
+                disabled={!saveName.trim() || isSaving}
                 className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
               >
-                Сохранить
+                {isSaving ? 'Сохранение…' : 'Сохранить'}
               </button>
             </div>
           </div>

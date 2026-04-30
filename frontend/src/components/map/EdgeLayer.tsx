@@ -14,8 +14,13 @@ interface Props {
 
 function EdgeLayer({ edges, nodeMap, addedEdges, extendedNodeMap }: Props) {
   const removedEdges = useGraphStore((s) => s.removedEdges)
+  const removedNodes = useGraphStore((s) => s.removedNodes)
+  const cascadeResult = useGraphStore((s) => s.cascadeResult)
   const toggleEdge = useGraphStore((s) => s.toggleEdge)
   const mapMode = useGraphStore((s) => s.mapMode)
+
+  const cascadeRemovedIds = new Set((cascadeResult?.steps ?? []).map((s) => s.removed_node_id))
+  const removedNodesSet = new Set(removedNodes)
 
   return (
     <>
@@ -23,9 +28,13 @@ function EdgeLayer({ edges, nodeMap, addedEdges, extendedNodeMap }: Props) {
         const positions = getEdgePositions(edge.source, edge.target, nodeMap)
         if (!positions) return null
 
-        const isRemoved = removedEdges.some(
+        const isRemovedExplicit = removedEdges.some(
           ([s, t]) => s === edge.source && t === edge.target
         )
+        const endpointRemoved =
+          removedNodesSet.has(edge.source) || removedNodesSet.has(edge.target) ||
+          cascadeRemovedIds.has(edge.source) || cascadeRemovedIds.has(edge.target)
+        const isRemoved = isRemovedExplicit || endpointRemoved
 
         return (
           <Fragment key={`${edge.source}-${edge.target}`}>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ROUTES } from './constants/routes'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
@@ -7,6 +7,8 @@ import RegisterPage from './pages/RegisterPage'
 import MapPage from './pages/MapPage'
 import ScenariosPage from './pages/ScenariosPage'
 import HistoryPage from './pages/HistoryPage'
+import HelpPage from './pages/HelpPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -25,9 +27,10 @@ export default function App() {
           <Route path={ROUTES.MAP} element={<MapPage />} />
           <Route path={ROUTES.SCENARIOS} element={<ScenariosPage />} />
           <Route path={ROUTES.HISTORY} element={<HistoryPage />} />
+          <Route path={ROUTES.HELP} element={<HelpPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to={ROUTES.MAP} replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

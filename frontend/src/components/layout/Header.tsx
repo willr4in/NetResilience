@@ -36,6 +36,12 @@ export default function Header() {
         >
           История
         </NavLink>
+        <NavLink
+          to={ROUTES.HELP}
+          className={({ isActive }) => isActive ? 'text-white font-medium' : 'text-gray-400 hover:text-white'}
+        >
+          Справка
+        </NavLink>
       </nav>
 
       <button

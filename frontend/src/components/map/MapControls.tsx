@@ -65,12 +65,14 @@ export default function MapControls({ onCalculate, onCascade, onSave }: Props) {
       </div>
 
       {analysisResult && !isDirty && (
-        <button
-          onClick={onSave}
-          className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow text-sm font-medium transition-colors"
-        >
-          Сохранить
-        </button>
+        <>
+          <button
+            onClick={onSave}
+            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg shadow text-sm font-medium transition-colors"
+          >
+            Сохранить
+          </button>
+        </>
       )}
     </div>
   )

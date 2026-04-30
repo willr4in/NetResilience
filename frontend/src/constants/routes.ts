@@ -4,4 +4,5 @@ export const ROUTES = {
   MAP: '/map',
   SCENARIOS: '/scenarios',
   HISTORY: '/history',
+  HELP: '/help',
 } as const

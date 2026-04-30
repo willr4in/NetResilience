@@ -5,6 +5,19 @@ import { buildNodeMap, getGraphBounds } from '../../utils/normalizeGraphData'
 import { DEFAULT_CENTER, DEFAULT_ZOOM, TILE_URL, MAP_BOUNDS, MAP_MIN_ZOOM } from '../../constants/map'
 import NodeLayer from './NodeLayer'
 import EdgeLayer from './EdgeLayer'
+import RouteLayer from './RouteLayer'
+import HeatLayer from './HeatLayer'
+import MapFocuser from './MapFocuser'
+import { setMapInstance } from '../../lib/mapRef'
+
+function MapInstanceProbe() {
+  const map = useMap()
+  useEffect(() => {
+    setMapInstance(map)
+    return () => setMapInstance(null)
+  }, [map])
+  return null
+}
 import 'leaflet/dist/leaflet.css'
 import '../../styles/leaflet-overrides.css'
 import '../../lib/leaflet'
@@ -24,19 +37,35 @@ function BoundsUpdater() {
 function MapClickHandler() {
   const mapMode = useGraphStore((s) => s.mapMode)
   const addNode = useGraphStore((s) => s.addNode)
+  const setRoutePin = useGraphStore((s) => s.setRoutePin)
+  const routeFrom = useGraphStore((s) => s.routeFrom)
+  const routeTo = useGraphStore((s) => s.routeTo)
   const counter = useRef(1)
 
   useMapEvents({
     click(e) {
-      if (mapMode !== 'add-node') return
-      const id = `new_${Date.now()}`
-      addNode({
-        id,
-        lat: e.latlng.lat,
-        lon: e.latlng.lng,
-        label: `Узел ${counter.current++}`,
-        node_type: 'intersection',
-      })
+      if (mapMode === 'add-node') {
+        const id = `new_${Date.now()}`
+        addNode({
+          id,
+          lat: e.latlng.lat,
+          lon: e.latlng.lng,
+          label: `Узел ${counter.current++}`,
+          node_type: 'intersection',
+        })
+        return
+      }
+      if (mapMode === 'route') {
+        const pin = { lat: e.latlng.lat, lon: e.latlng.lng }
+        if (!routeFrom) {
+          setRoutePin('from', pin)
+        } else if (!routeTo) {
+          setRoutePin('to', pin)
+        } else {
+          setRoutePin('from', pin)
+          setRoutePin('to', null)
+        }
+      }
     },
   })
 
@@ -48,6 +77,7 @@ export default function GraphMap() {
   const edges = useGraphStore((s) => s.edges)
   const addedNodes = useGraphStore((s) => s.addedNodes)
   const addedEdges = useGraphStore((s) => s.addedEdges)
+  const viewMode = useGraphStore((s) => s.viewMode)
 
   const nodeMap = useMemo(() => buildNodeMap(nodes), [nodes])
   const extendedNodeMap = useMemo(() => {
@@ -69,9 +99,16 @@ export default function GraphMap() {
       <ZoomControl zoomInTitle="Приблизить" zoomOutTitle="Отдалить" />
       <TileLayer url={TILE_URL} attribution="" />
       <BoundsUpdater />
+      <MapInstanceProbe />
+      <MapFocuser />
       <MapClickHandler />
       <EdgeLayer edges={edges} nodeMap={nodeMap} addedEdges={addedEdges} extendedNodeMap={extendedNodeMap} />
-      <NodeLayer nodes={nodes} addedNodes={addedNodes} />
+      {viewMode === 'points' ? (
+        <NodeLayer nodes={nodes} addedNodes={addedNodes} />
+      ) : (
+        <HeatLayer />
+      )}
+      <RouteLayer />
     </MapContainer>
   )
 }

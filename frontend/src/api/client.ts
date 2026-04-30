@@ -8,6 +8,19 @@ const client = axios.create({
 let isRefreshing = false
 let queue: Array<() => void> = []
 
+const inflight = new Map<string, AbortController>()
+
+export function abortable(tag: string): { signal: AbortSignal } {
+  inflight.get(tag)?.abort()
+  const controller = new AbortController()
+  inflight.set(tag, controller)
+  return { signal: controller.signal }
+}
+
+export function isAbortError(err: unknown): boolean {
+  return axios.isCancel(err) || (err as { code?: string })?.code === 'ERR_CANCELED'
+}
+
 client.interceptors.response.use(
   (response) => response,
   async (error) => {

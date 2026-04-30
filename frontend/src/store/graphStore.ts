@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import type { NodeSchema, EdgeSchema } from '../types/graph'
 import type { GraphAnalysisResponse, CascadeResponse } from '../types/metrics'
 
-export type MapMode = 'view' | 'delete' | 'add-edge' | 'add-node'
+export type MapMode = 'view' | 'delete' | 'add-edge' | 'add-node' | 'route'
+export type ViewMode = 'points' | 'heatmap'
 
 export interface AddedNode {
   id: string
@@ -10,6 +11,31 @@ export interface AddedNode {
   lon: number
   label: string
   node_type: string
+}
+
+export interface FocusTarget {
+  id: string
+  lat: number
+  lon: number
+  ts: number
+}
+
+export interface RoutePin {
+  lat: number
+  lon: number
+}
+
+export interface RouteResult {
+  found: boolean
+  path: { id: string; lat: number; lon: number }[]
+  distance_km: number
+  drive_time_minutes: number
+  walk_time_minutes: number
+  total_time_minutes: number
+  snap_from: { id: string; lat: number; lon: number } | null
+  snap_to: { id: string; lat: number; lon: number } | null
+  snap_from_distance_km: number
+  snap_to_distance_km: number
 }
 
 type AddHistoryEntry =
@@ -31,7 +57,13 @@ interface GraphState {
   isCalculating: boolean
   isDirty: boolean
   mapMode: MapMode
+  viewMode: ViewMode
   selectedNodeId: string | null
+  routeFrom: RoutePin | null
+  routeTo: RoutePin | null
+  routeResult: RouteResult | null
+  focusTarget: FocusTarget | null
+  scenarioMeta: { name: string; description: string | null } | null
 
   setGraph: (district: string, nodes: NodeSchema[], edges: EdgeSchema[]) => void
   toggleNode: (nodeId: string) => void
@@ -45,7 +77,16 @@ interface GraphState {
   setLoading: (value: boolean) => void
   setCalculating: (value: boolean) => void
   setMapMode: (mode: MapMode) => void
+  setViewMode: (mode: ViewMode) => void
   setSelectedNodeId: (id: string | null) => void
+  setRoutePin: (which: 'from' | 'to', pin: RoutePin | null) => void
+  setRouteResult: (result: RouteResult | null) => void
+  resetRoute: () => void
+  focusOnNode: (id: string, lat: number, lon: number) => void
+  clearFocus: () => void
+  applyCascadeToScenario: () => void
+  setScenarioMeta: (name: string, description: string | null) => void
+  clearScenarioMeta: () => void
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -63,7 +104,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   isCalculating: false,
   isDirty: false,
   mapMode: 'view',
+  viewMode: 'points',
   selectedNodeId: null,
+  routeFrom: null,
+  routeTo: null,
+  routeResult: null,
+  focusTarget: null,
+  scenarioMeta: null,
 
   setGraph: (district, nodes, edges) =>
     set({
@@ -72,6 +119,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       addedNodes: [], addedEdges: [], addHistory: [],
       analysisResult: null, cascadeResult: null,
       isDirty: false, selectedNodeId: null,
+      routeFrom: null, routeTo: null, routeResult: null,
+      focusTarget: null, scenarioMeta: null,
     }),
 
   toggleNode: (nodeId) => {
@@ -139,5 +188,21 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setLoading: (value) => set({ isLoading: value }),
   setCalculating: (value) => set({ isCalculating: value }),
   setMapMode: (mode) => set({ mapMode: mode, selectedNodeId: null }),
+  setViewMode: (mode) => set({ viewMode: mode }),
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
+  setRoutePin: (which, pin) =>
+    set(which === 'from' ? { routeFrom: pin, routeResult: null } : { routeTo: pin, routeResult: null }),
+  setRouteResult: (result) => set({ routeResult: result }),
+  resetRoute: () => set({ routeFrom: null, routeTo: null, routeResult: null }),
+  focusOnNode: (id, lat, lon) => set({ focusTarget: { id, lat, lon, ts: Date.now() } }),
+  clearFocus: () => set({ focusTarget: null }),
+  applyCascadeToScenario: () => {
+    const { cascadeResult, removedNodes } = get()
+    if (!cascadeResult || cascadeResult.steps.length === 0) return
+    const ids = cascadeResult.steps.map((s) => s.removed_node_id)
+    const merged = Array.from(new Set([...removedNodes, ...ids]))
+    set({ removedNodes: merged, cascadeResult: null, isDirty: true })
+  },
+  setScenarioMeta: (name, description) => set({ scenarioMeta: { name, description } }),
+  clearScenarioMeta: () => set({ scenarioMeta: null }),
 }))
