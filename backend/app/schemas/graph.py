@@ -74,3 +74,36 @@ class CascadeResponse(BaseModel):
     steps: List[CascadeStep] = Field(..., description="Cascade simulation steps")
     total_steps: int = Field(..., description="Actual number of steps executed")
     calculation_time_ms: float = Field(0.0, description="Calculation time in milliseconds")
+
+
+class RouteRequest(BaseModel):
+    district: str = Field(..., description="District name")
+    from_lat: float = Field(..., ge=-90, le=90)
+    from_lon: float = Field(..., ge=-180, le=180)
+    to_lat: float = Field(..., ge=-90, le=90)
+    to_lon: float = Field(..., ge=-180, le=180)
+    removed_nodes: List[str] = Field(default_factory=list)
+    removed_edges: List[List[str]] = Field(default_factory=list)
+    added_nodes: List[Dict[str, Any]] = Field(default_factory=list)
+    added_edges: List[List[str]] = Field(default_factory=list)
+
+
+class RoutePoint(BaseModel):
+    id: str
+    lat: float
+    lon: float
+
+
+class RouteResponse(BaseModel):
+    district: str
+    found: bool = Field(..., description="Найден ли маршрут (false при разрыве сети)")
+    path: List[RoutePoint] = Field(default_factory=list, description="Последовательность узлов от снэпа A до снэпа B")
+    distance_km: float = Field(0.0, description="Длина маршрута по сети в км")
+    drive_time_minutes: float = Field(0.0, description="Расчётное время в пути по сети")
+    walk_time_minutes: float = Field(0.0, description="Расчётное пешее время до/от ближайших перекрёстков")
+    total_time_minutes: float = Field(0.0, description="Сумма пешего и автомобильного времени")
+    snap_from: Optional[RoutePoint] = Field(None, description="Ближайший к точке отправления узел")
+    snap_to: Optional[RoutePoint] = Field(None, description="Ближайший к точке назначения узел")
+    snap_from_distance_km: float = Field(0.0, description="Расстояние от исходной точки до ближайшего узла")
+    snap_to_distance_km: float = Field(0.0, description="Расстояние от ближайшего узла до точки назначения")
+    calculation_time_ms: float = Field(0.0)

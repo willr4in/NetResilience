@@ -2,6 +2,8 @@ import networkx as nx
 from typing import Dict, Optional, List
 import logging
 
+from ..config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -109,9 +111,9 @@ def calculate_resilience(
     concentration = betweenness_concentration(centrality_metrics.get("betweenness", {}))
 
     resilience_score = round(
-        0.4 * (1.0 if connected else 0.0) +
-        0.3 * component_ratio +
-        0.3 * (1.0 - concentration),
+        settings.RESILIENCE_WEIGHT_CONNECTIVITY * (1.0 if connected else 0.0) +
+        settings.RESILIENCE_WEIGHT_LARGEST_COMPONENT * component_ratio +
+        settings.RESILIENCE_WEIGHT_BETWEENNESS_INVERSE * (1.0 - concentration),
         4
     )
 

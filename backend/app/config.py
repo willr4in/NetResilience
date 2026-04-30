@@ -19,6 +19,26 @@ class Settings(BaseSettings):
     MAX_NODES_FOR_FULL_CALCULATION: int = 500
     BETWEENNESS_SAMPLE_SIZE: Optional[int] = 300
 
+    # Веса формулы интегрального коэффициента устойчивости:
+    #   R = w_C·C + w_S·S + w_B·(1 − B)
+    # Связность C — бинарный фундамент: разорванная сеть теряет ценность
+    # независимо от остальных метрик, поэтому её вес наибольший.
+    # Размер наибольшей компоненты S и инверсия концентрации нагрузки (1−B)
+    # описывают независимые аспекты структурной устойчивости и оцениваются
+    # равнозначно. Сумма коэффициентов = 1, R ∈ [0, 1].
+    RESILIENCE_WEIGHT_CONNECTIVITY: float = 0.4
+    RESILIENCE_WEIGHT_LARGEST_COMPONENT: float = 0.3
+    RESILIENCE_WEIGHT_BETWEENNESS_INVERSE: float = 0.3
+
+    # Скорости для оценки времени в маршруте A→B.
+    # Средняя городская скорость с учётом светофоров, перекрёстков и средней
+    # загрузки 40 км/ч — типичное значение для центральной части Москвы.
+    # Скорость пешехода 5 км/ч — стандартная нормальная скорость взрослого.
+    # Используются как простая аппроксимация: per-edge скорость потребовала бы
+    # перегенерации графа с тегами maxspeed/highway из OSM.
+    DEFAULT_DRIVING_SPEED_KMH: float = 40.0
+    DEFAULT_WALKING_SPEED_KMH: float = 5.0
+
     ENABLE_CACHE: bool = True
     CACHE_HITS_THRESHOLD: int = 10
 

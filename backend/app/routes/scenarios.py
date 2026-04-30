@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from ..dependencies import get_scenario_service, get_current_user
 from ..schemas.scenario import ScenarioCreate, ScenarioUpdate, ScenarioResponse, ScenarioList
 from ..services.scenario_service import ScenarioService
 from ..models.user import User
+from ..rate_limit import limiter
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 
@@ -33,7 +34,9 @@ def get_scenario(
     return scenario_service.get_scenario(scenario_id, user_id=current_user.id)
 
 @router.post("", response_model=ScenarioResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
 def save_scenario(
+    request: Request,
     scenario_data: ScenarioCreate,
     current_user: User = Depends(get_current_user),
     scenario_service: ScenarioService = Depends(get_scenario_service)
