@@ -28,6 +28,11 @@ venv/
 docker-compose.override.yml
 postgres-data/
 
+# Дипломные документы (не коммитим в репозиторий)
+*.pdf
+*.md
+!README.md
+
 # Проект
 backend/app/data/districts/
 scripts/cache/
