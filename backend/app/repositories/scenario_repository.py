@@ -29,27 +29,26 @@ class ScenarioRepository:
     def get_scenario_by_id(self, scenario_id: int) -> Optional[Scenario]:
         return self.db.query(Scenario).filter(Scenario.id == scenario_id).first()
     
-    def get_scenarios_by_user_id(self, user_id: int, page: int = 1, size: int = 10):
-        total = self.db.query(Scenario).filter(Scenario.user_id == user_id).count()
-        scenarios = (
-            self.db.query(Scenario)
-            .filter(Scenario.user_id == user_id)
-            .order_by(Scenario.created_at.desc())
-            .offset((page - 1) * size)
-            .limit(size)
-            .all()
-        )
+    def get_scenarios_by_user_id(self, user_id: int, page: int = 1, size: int = 10,
+                                  search: str = "", sort_by: str = "created_at"):
+        q = self.db.query(Scenario).filter(Scenario.user_id == user_id)
+        if search:
+            q = q.filter(Scenario.name.ilike(f"%{search}%"))
+        order_col = {"name": Scenario.name, "hits": Scenario.hits}.get(sort_by, Scenario.created_at)
+        q = q.order_by(order_col.desc() if sort_by != "name" else order_col.asc())
+        total = q.count()
+        scenarios = q.offset((page - 1) * size).limit(size).all()
         return scenarios, total
-        
-    def get_all_scenarios(self, page: int = 1, size: int = 10):
-        total = self.db.query(Scenario).count()
-        scenarios = (
-            self.db.query(Scenario)
-            .order_by(Scenario.created_at.desc())
-            .offset((page - 1) * size)
-            .limit(size)
-            .all()
-        )
+
+    def get_all_scenarios(self, page: int = 1, size: int = 10,
+                          search: str = "", sort_by: str = "created_at"):
+        q = self.db.query(Scenario)
+        if search:
+            q = q.filter(Scenario.name.ilike(f"%{search}%"))
+        order_col = {"name": Scenario.name, "hits": Scenario.hits}.get(sort_by, Scenario.created_at)
+        q = q.order_by(order_col.desc() if sort_by != "name" else order_col.asc())
+        total = q.count()
+        scenarios = q.offset((page - 1) * size).limit(size).all()
         return scenarios, total
 
     def get_scenarios_by_district(self, district: str) -> List[Scenario]:

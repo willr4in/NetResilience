@@ -5,6 +5,7 @@ from typing import Any
 
 from ..cache import get_redis
 from ..config import settings
+from ..metrics import cache_hits, cache_misses
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,9 @@ def get(key: str) -> Any | None:
     try:
         raw = client.get(key)
         if raw is None:
+            cache_misses.inc()
             return None
+        cache_hits.inc()
         return json.loads(raw)
     except Exception as e:
         logger.warning("Cache get error [%s]: %s", key, e)

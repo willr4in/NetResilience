@@ -117,30 +117,28 @@ class ScenarioService:
         logger.info(f"Scenario viewed: id={scenario_id}, user_id={user_id}")
         return ScenarioResponse.model_validate(scenario)
 
-    def get_user_scenarios(self, user_id: int, page: int = 1, size: int = 10) -> ScenarioList:
-        scenarios, total = self.scenario_repository.get_scenarios_by_user_id(user_id, page, size)
+    def get_user_scenarios(self, user_id: int, page: int = 1, size: int = 10,
+                            search: str = "", sort_by: str = "created_at") -> ScenarioList:
+        scenarios, total = self.scenario_repository.get_scenarios_by_user_id(
+            user_id, page, size, search=search, sort_by=sort_by)
         pages = math.ceil(total / size) if total > 0 else 1
-
         logger.info(f"Retrieved scenarios for user_id={user_id}: total={total}")
         return ScenarioList(
             items=[ScenarioResponse.model_validate(s) for s in scenarios],
-            total=total,
-            page=page,
-            size=size,
-            pages=pages
+            total=total, page=page, size=size, pages=pages,
         )
 
-    def get_all_scenarios(self, page: int = 1, size: int = 10) -> ScenarioList:
-        scenarios, total = self.scenario_repository.get_all_scenarios(page, size)
+    def get_all_scenarios(self, page: int = 1, size: int = 10,
+                          search: str = "", sort_by: str = "created_at") -> ScenarioList:
+        scenarios, total = self.scenario_repository.get_all_scenarios(
+            page, size, search=search, sort_by=sort_by)
         pages = math.ceil(total / size) if total > 0 else 1
-
         items = []
         for s in scenarios:
             data = ScenarioResponse.model_validate(s)
             if s.user:
                 data.author_name = f"{s.user.name} {s.user.surname}"
             items.append(data)
-
         return ScenarioList(items=items, total=total, page=page, size=size, pages=pages)
 
     def update_scenario(self, scenario_id: int, user_id: int, update_data: ScenarioUpdate) -> ScenarioResponse:

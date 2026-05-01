@@ -10,10 +10,12 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 def get_user_history(
     page: int = 1,
     size: int = 10,
+    action: str = "",
+    search: str = "",
     current_user: User = Depends(get_current_user),
     history_service: HistoryService = Depends(get_history_service)
 ):
-    return history_service.get_user_history(user_id=current_user.id, page=page, size=size)
+    return history_service.get_user_history(user_id=current_user.id, page=page, size=size, action=action, search=search)
 
 @router.get("/scenario/{scenario_id}", response_model=HistoryList, status_code=status.HTTP_200_OK)
 def get_scenario_history(

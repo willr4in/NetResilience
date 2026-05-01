@@ -11,19 +11,23 @@ router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 def get_public_scenarios(
     page: int = 1,
     size: int = 10,
+    search: str = "",
+    sort_by: str = "created_at",
     current_user: User = Depends(get_current_user),
     scenario_service: ScenarioService = Depends(get_scenario_service)
 ):
-    return scenario_service.get_all_scenarios(page=page, size=size)
+    return scenario_service.get_all_scenarios(page=page, size=size, search=search, sort_by=sort_by)
 
 @router.get("", response_model=ScenarioList, status_code=status.HTTP_200_OK)
 def get_all_scenarios(
     page: int = 1,
     size: int = 10,
+    search: str = "",
+    sort_by: str = "created_at",
     current_user: User = Depends(get_current_user),
     scenario_service: ScenarioService = Depends(get_scenario_service)
 ):
-    return scenario_service.get_user_scenarios(user_id=current_user.id, page=page, size=size)
+    return scenario_service.get_user_scenarios(user_id=current_user.id, page=page, size=size, search=search, sort_by=sort_by)
 
 @router.get("/{scenario_id}", response_model=ScenarioResponse, status_code=status.HTTP_200_OK)
 def get_scenario(

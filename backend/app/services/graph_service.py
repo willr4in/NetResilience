@@ -97,14 +97,15 @@ def apply_changes(G: nx.Graph, changes: GraphChanges) -> nx.Graph:
     for edge in changes.added_edges:
         if len(edge) >= 2:
             source, target = edge[0], edge[1]
+            if not G_modified.has_node(source) or not G_modified.has_node(target):
+                logger.warning(f"Skipping edge {source} -> {target}: endpoint not in graph")
+                continue
             if len(edge) > 2:
                 weight = float(edge[2])
-            elif G_modified.has_node(source) and G_modified.has_node(target):
+            else:
                 s = G_modified.nodes[source]
                 t = G_modified.nodes[target]
                 weight = haversine(s["lat"], s["lon"], t["lat"], t["lon"])
-            else:
-                weight = 1.0
             G_modified.add_edge(source, target, weight=weight)
             logger.debug(f"Added edge: {source} -> {target} (weight={weight:.4f} km)")
 

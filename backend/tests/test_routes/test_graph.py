@@ -729,14 +729,14 @@ class TestCascadeRoutes:
         for i, step in enumerate(steps):
             assert step["step"] == i + 1
 
-    def test_simulate_cascade_concentration_decreases(self, client, valid_district):
+    def test_simulate_cascade_concentration_valid(self, client, valid_district):
         """
-        Тест снижения концентрации betweenness при каскадном удалении.
+        Тест корректности betweenness_concentration при каскадном удалении.
 
-        Удаление узла с максимальным betweenness всегда снижает коэффициент
-        Джини оставшегося распределения — нагрузка перераспределяется
-        равномернее. Проверяем, что концентрация на последнем шаге
-        не превышает концентрацию на первом.
+        Удаление узла с максимальным betweenness не гарантирует монотонного
+        снижения коэффициента Джини: оставшиеся узлы могут стать новыми
+        бутылочными горлышками. Проверяем только что значения остаются
+        в допустимом диапазоне [0, 1] на каждом шаге.
         """
         response = client.post(
             "/api/graph/simulate-cascade",
@@ -745,7 +745,8 @@ class TestCascadeRoutes:
         assert response.status_code == status.HTTP_200_OK
         steps = response.json()["steps"]
 
-        assert steps[-1]["betweenness_concentration"] <= steps[0]["betweenness_concentration"]
+        for step in steps:
+            assert 0.0 <= step["betweenness_concentration"] <= 1.0
 
     def test_simulate_cascade_resilience_score_range(self, client, valid_district):
         """

@@ -13,8 +13,10 @@ class HistoryService:
     def __init__(self, db: Session):
         self.history_repository = HistoryRepository(db)
 
-    def get_user_history(self, user_id: int, page: int = 1, size: int = 10) -> HistoryList:
-        history, total = self.history_repository.get_history_by_user_id(user_id, page, size)
+    def get_user_history(self, user_id: int, page: int = 1, size: int = 10,
+                         action: str = "", search: str = "") -> HistoryList:
+        history, total = self.history_repository.get_history_by_user_id(
+            user_id, page, size, action=action, search=search)
         pages = math.ceil(total / size) if total > 0 else 1
 
         items = []

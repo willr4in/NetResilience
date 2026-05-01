@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
 from typing import List, Optional
 from ..models.history import History
 from ..schemas.history import HistoryCreate, ActionType
@@ -25,17 +26,25 @@ class HistoryRepository:
             joinedload(History.scenario)
         ).filter(History.id == history_id).first()
     
-    def get_history_by_user_id(self, user_id: int, page: int = 1, size: int = 10):
-        total = self.db.query(History).filter(History.user_id == user_id).count()
-        history = (
+    def get_history_by_user_id(self, user_id: int, page: int = 1, size: int = 10,
+                                action: str = "", search: str = ""):
+        q = (
             self.db.query(History)
             .options(joinedload(History.scenario))
             .filter(History.user_id == user_id)
-            .order_by(History.created_at.desc())
-            .offset((page - 1) * size)
-            .limit(size)
-            .all()
         )
+        if action:
+            q = q.filter(History.action == action)
+        if search:
+            term = f"%{search}%"
+            q = q.filter(
+                or_(
+                    History.details.op('->>')('scenario_name').ilike(term),
+                    History.details.op('->>')('deleted_scenario_name').ilike(term),
+                )
+            )
+        total = q.count()
+        history = q.order_by(History.created_at.desc()).offset((page - 1) * size).limit(size).all()
         return history, total
 
     def get_history_by_scenario_id(self, scenario_id: int, page: int = 1, size: int = 10):
