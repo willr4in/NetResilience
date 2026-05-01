@@ -40,13 +40,28 @@ git clone https://github.com/willrain/NetResilience.git
 cd NetResilience
 ```
 
-### 2. Создать `.env` в корне проекта
+### 2. Создать файлы окружения
+
+**Корневой `.env`** — для Docker Compose (PostgreSQL, Grafana):
 
 ```bash
-cp .env.example .env
+cp .env.docker.example .env
 ```
 
-Открыть `.env` и заполнить:
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=yourpassword
+POSTGRES_DB=transport_db
+POSTGRES_HOST=postgres
+
+GRAFANA_ADMIN_PASSWORD=yourpassword
+```
+
+**`backend/.env`** — для FastAPI-приложения:
+
+```bash
+cp backend/.env.example backend/.env
+```
 
 ```env
 POSTGRES_USER=postgres
@@ -97,7 +112,7 @@ npm run dev
 | Сервис | URL | Логин |
 |--------|-----|-------|
 | Prometheus | http://localhost:9090 | — |
-| Grafana | http://localhost:3001 | admin / admin |
+| Grafana | http://localhost:3001 | admin / `GRAFANA_ADMIN_PASSWORD` из `.env` |
 
 Дашборд **NetResilience** подключается автоматически при первом запуске Grafana.  
 Метрики бэкенда: RPS, latency p95, cache hit rate, ошибки 5xx.
@@ -140,7 +155,8 @@ NetResilience/
 ├── grafana/                 # Provisioning datasource + dashboard
 ├── prometheus.yml
 ├── docker-compose.yml
-└── .env.example
+├── .env.docker.example
+└── backend/.env.example
 ```
 
 ---
