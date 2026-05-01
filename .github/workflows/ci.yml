@@ -27,6 +27,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run tests
+        env:
+          ENABLE_CACHE: "false"
         run: pytest --tb=short -q
 
   frontend:
