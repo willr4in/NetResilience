@@ -1,5 +1,7 @@
 import time
-from fastapi import APIRouter, Request, status, HTTPException
+from fastapi import APIRouter, Depends, Request, status, HTTPException
+from ..dependencies import get_current_user
+from ..models.user import User
 from ..services.graph_service import load_graph, analyze, simulate_cascade, find_route
 from ..schemas.graph import (
     GraphSchema,
@@ -35,7 +37,7 @@ def get_graph(request: Request, district: str):
 
 @router.post("/calculate", response_model=GraphAnalysisResponse, status_code=status.HTTP_200_OK)
 @limiter.limit("30/minute")
-def calculate(request: Request, changes: GraphChanges):
+def calculate(request: Request, changes: GraphChanges, _: User = Depends(get_current_user)):
     key = cache_service.make_analysis_key(changes.model_dump())
     t0 = time.monotonic()
     cached = cache_service.get(key)
@@ -55,7 +57,7 @@ def calculate(request: Request, changes: GraphChanges):
 
 @router.post("/simulate-cascade", response_model=CascadeResponse, status_code=status.HTTP_200_OK)
 @limiter.limit("20/minute")
-def cascade(request: Request, payload: CascadeRequest):
+def cascade(request: Request, payload: CascadeRequest, _: User = Depends(get_current_user)):
     key = cache_service.make_cascade_key(payload.model_dump())
     t0 = time.monotonic()
     cached = cache_service.get(key)

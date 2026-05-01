@@ -205,7 +205,7 @@ class TestGraphRoutes:
         assert "detail" in data
         assert "не найден" in data["detail"].lower()
 
-    def test_calculate_no_changes(self, client, valid_district):
+    def test_calculate_no_changes(self, client_with_auth, valid_district):
         """
         Тест расчета метрик без изменений графа.
         
@@ -220,10 +220,10 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_calculate_response_structure(self, client, valid_district):
+    def test_calculate_response_structure(self, client_with_auth, valid_district):
         """
         Тест структуры ответа при расчете метрик.
         
@@ -238,7 +238,7 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -247,7 +247,7 @@ class TestGraphRoutes:
         assert "resilience" in data
         assert "calculation_time_ms" in data
 
-    def test_calculate_metrics_structure(self, client, valid_district):
+    def test_calculate_metrics_structure(self, client_with_auth, valid_district):
         """
         Тест структуры метрик графа.
         
@@ -262,7 +262,7 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -278,7 +278,7 @@ class TestGraphRoutes:
         assert isinstance(metrics["degree"], dict)
         assert isinstance(metrics["critical_nodes"], list)
 
-    def test_calculate_resilience_present(self, client, valid_district):
+    def test_calculate_resilience_present(self, client_with_auth, valid_district):
         """
         Тест наличия показателей устойчивости.
         
@@ -293,7 +293,7 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -302,7 +302,7 @@ class TestGraphRoutes:
         assert isinstance(data["resilience"], dict)
         assert len(data["resilience"]) > 0
 
-    def test_calculate_calculation_time_positive(self, client, valid_district):
+    def test_calculate_calculation_time_positive(self, client_with_auth, valid_district):
         """
         Тест положительного времени расчета.
         
@@ -317,14 +317,14 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         
         assert data["calculation_time_ms"] >= 0
 
-    def test_calculate_district_not_found(self, client):
+    def test_calculate_district_not_found(self, client_with_auth):
         """
         Тест расчета для несуществующего района.
         
@@ -339,10 +339,10 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_calculate_missing_district_field(self, client):
+    def test_calculate_missing_district_field(self, client_with_auth):
         """
         Тест расчета без указания района.
         
@@ -356,10 +356,10 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_calculate_with_removed_nodes(self, client, valid_district, graph_node_ids):
+    def test_calculate_with_removed_nodes(self, client_with_auth, valid_district, graph_node_ids):
         """
         Тест расчета с удаленными узлами.
         
@@ -374,14 +374,14 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
         
         data = response.json()
         assert "metrics" in data
         assert "resilience" in data
 
-    def test_calculate_with_removed_edges(self, client, valid_district, graph_node_ids):
+    def test_calculate_with_removed_edges(self, client_with_auth, valid_district, graph_node_ids):
         """
         Тест расчета с удаленными ребрами.
         
@@ -396,10 +396,10 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_calculate_with_added_nodes(self, client, valid_district):
+    def test_calculate_with_added_nodes(self, client_with_auth, valid_district):
         """
         Тест расчета с добавленными узлами.
         
@@ -416,10 +416,10 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_calculate_with_added_edges(self, client, valid_district, graph_node_ids):
+    def test_calculate_with_added_edges(self, client_with_auth, valid_district, graph_node_ids):
         """
         Тест расчета с добавленными ребрами.
         
@@ -436,10 +436,10 @@ class TestGraphRoutes:
             ]
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_calculate_with_nonexistent_nodes(self, client, valid_district):
+    def test_calculate_with_nonexistent_nodes(self, client_with_auth, valid_district):
         """
         Тест расчета с несуществующими узлами.
         
@@ -454,10 +454,10 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_calculate_critical_nodes_not_empty(self, client, valid_district):
+    def test_calculate_critical_nodes_not_empty(self, client_with_auth, valid_district):
         """
         Тест обнаружения критических узлов.
         
@@ -472,7 +472,7 @@ class TestGraphRoutes:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -484,7 +484,7 @@ class TestGraphRoutes:
 class TestGraphIntegration:
     """Интеграционные тесты для операций с графами"""
     
-    def test_get_then_calculate(self, client, valid_district):
+    def test_get_then_calculate(self, client_with_auth, valid_district):
         """
         Тест последовательности: получение графа, затем расчет.
         
@@ -492,7 +492,7 @@ class TestGraphIntegration:
         сначала получение данных графа, затем расчет с использованием
         реальных идентификаторов узлов.
         """
-        get_response = client.get(f"/api/graph/{valid_district}")
+        get_response = client_with_auth.get(f"/api/graph/{valid_district}")
         assert get_response.status_code == status.HTTP_200_OK
         
         graph_data = get_response.json()
@@ -507,10 +507,10 @@ class TestGraphIntegration:
             "added_edges": []
         }
         
-        calc_response = client.post("/api/graph/calculate", json=changes)
+        calc_response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert calc_response.status_code == status.HTTP_200_OK
 
-    def test_calculate_before_after_comparison(self, client, valid_district, graph_node_ids):
+    def test_calculate_before_after_comparison(self, client_with_auth, valid_district, graph_node_ids):
         """
         Тест сравнения метрик до и после изменений.
         
@@ -525,7 +525,7 @@ class TestGraphIntegration:
             "added_edges": []
         }
         
-        response_baseline = client.post("/api/graph/calculate", json=changes_no_modification)
+        response_baseline = client_with_auth.post("/api/graph/calculate", json=changes_no_modification)
         assert response_baseline.status_code == status.HTTP_200_OK
         data_baseline = response_baseline.json()
         
@@ -537,7 +537,7 @@ class TestGraphIntegration:
             "added_edges": []
         }
         
-        response_modified = client.post("/api/graph/calculate", json=changes_with_removal)
+        response_modified = client_with_auth.post("/api/graph/calculate", json=changes_with_removal)
         assert response_modified.status_code == status.HTTP_200_OK
         data_modified = response_modified.json()
         
@@ -546,7 +546,7 @@ class TestGraphIntegration:
         assert "resilience" in data_baseline
         assert "resilience" in data_modified
 
-    def test_multiple_changes_combined(self, client, valid_district, graph_node_ids):
+    def test_multiple_changes_combined(self, client_with_auth, valid_district, graph_node_ids):
         """
         Тест расчета с комбинацией различных изменений.
         
@@ -567,17 +567,17 @@ class TestGraphIntegration:
             ]
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_graph_structure_consistency(self, client, valid_district):
+    def test_graph_structure_consistency(self, client_with_auth, valid_district):
         """
         Тест согласованности структуры графа.
         
         Проверяет, что все узлы, используемые в ребрах,
         действительно существуют в графе.
         """
-        response = client.get(f"/api/graph/{valid_district}")
+        response = client_with_auth.get(f"/api/graph/{valid_district}")
         assert response.status_code == status.HTTP_200_OK
         
         data = response.json()
@@ -588,7 +588,7 @@ class TestGraphIntegration:
             assert edge["source"] in nodes
             assert edge["target"] in nodes
 
-    def test_centrality_metrics_existence(self, client, valid_district):
+    def test_centrality_metrics_existence(self, client_with_auth, valid_district):
         """
         Тест расчета всех типов центральности.
         
@@ -603,7 +603,7 @@ class TestGraphIntegration:
             "added_edges": []
         }
         
-        response = client.post("/api/graph/calculate", json=changes)
+        response = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response.status_code == status.HTTP_200_OK
         
         data = response.json()
@@ -613,7 +613,7 @@ class TestGraphIntegration:
         assert len(metrics["closeness"]) > 0
         assert len(metrics["degree"]) > 0
 
-    def test_calculation_reproducibility(self, client, valid_district):
+    def test_calculation_reproducibility(self, client_with_auth, valid_district):
         """
         Тест воспроизводимости результатов.
         
@@ -628,11 +628,11 @@ class TestGraphIntegration:
             "added_edges": []
         }
         
-        response1 = client.post("/api/graph/calculate", json=changes)
+        response1 = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response1.status_code == status.HTTP_200_OK
         data1 = response1.json()
         
-        response2 = client.post("/api/graph/calculate", json=changes)
+        response2 = client_with_auth.post("/api/graph/calculate", json=changes)
         assert response2.status_code == status.HTTP_200_OK
         data2 = response2.json()
         
@@ -642,26 +642,26 @@ class TestGraphIntegration:
 class TestCascadeRoutes:
     """Тесты для эндпоинта каскадной симуляции"""
 
-    def test_simulate_cascade_success(self, client, valid_district):
+    def test_simulate_cascade_success(self, client_with_auth, valid_district):
         """
         Тест успешного запуска каскадной симуляции.
 
         Проверяет, что эндпоинт возвращает статус 200
         для существующего района.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 5}
         )
         assert response.status_code == status.HTTP_200_OK
 
-    def test_simulate_cascade_response_structure(self, client, valid_district):
+    def test_simulate_cascade_response_structure(self, client_with_auth, valid_district):
         """
         Тест структуры ответа каскадной симуляции.
 
         Проверяет наличие всех обязательных полей верхнего уровня.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 3}
         )
@@ -674,13 +674,13 @@ class TestCascadeRoutes:
         assert "total_steps" in data
         assert "calculation_time_ms" in data
 
-    def test_simulate_cascade_step_structure(self, client, valid_district):
+    def test_simulate_cascade_step_structure(self, client_with_auth, valid_district):
         """
         Тест структуры одного шага каскадной симуляции.
 
         Проверяет, что каждый шаг содержит все необходимые поля.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 3}
         )
@@ -695,7 +695,7 @@ class TestCascadeRoutes:
         assert "largest_component_ratio" in step
         assert "betweenness_concentration" in step
 
-    def test_simulate_cascade_steps_count(self, client, valid_district):
+    def test_simulate_cascade_steps_count(self, client_with_auth, valid_district):
         """
         Тест соответствия количества шагов запрошенному значению.
 
@@ -703,7 +703,7 @@ class TestCascadeRoutes:
         с запрошенным количеством шагов.
         """
         requested_steps = 5
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": requested_steps}
         )
@@ -713,13 +713,13 @@ class TestCascadeRoutes:
         assert data["total_steps"] == requested_steps
         assert len(data["steps"]) == requested_steps
 
-    def test_simulate_cascade_step_numbers_sequential(self, client, valid_district):
+    def test_simulate_cascade_step_numbers_sequential(self, client_with_auth, valid_district):
         """
         Тест последовательной нумерации шагов.
 
         Проверяет, что шаги пронумерованы от 1 до N без пропусков.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 5}
         )
@@ -729,7 +729,7 @@ class TestCascadeRoutes:
         for i, step in enumerate(steps):
             assert step["step"] == i + 1
 
-    def test_simulate_cascade_concentration_valid(self, client, valid_district):
+    def test_simulate_cascade_concentration_valid(self, client_with_auth, valid_district):
         """
         Тест корректности betweenness_concentration при каскадном удалении.
 
@@ -738,7 +738,7 @@ class TestCascadeRoutes:
         бутылочными горлышками. Проверяем только что значения остаются
         в допустимом диапазоне [0, 1] на каждом шаге.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 5}
         )
@@ -748,13 +748,13 @@ class TestCascadeRoutes:
         for step in steps:
             assert 0.0 <= step["betweenness_concentration"] <= 1.0
 
-    def test_simulate_cascade_resilience_score_range(self, client, valid_district):
+    def test_simulate_cascade_resilience_score_range(self, client_with_auth, valid_district):
         """
         Тест допустимого диапазона resilience_score на каждом шаге.
 
         Проверяет, что значения resilience_score находятся в [0, 1].
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 5}
         )
@@ -765,13 +765,13 @@ class TestCascadeRoutes:
             assert 0.0 <= step["largest_component_ratio"] <= 1.0
             assert 0.0 <= step["betweenness_concentration"] <= 1.0
 
-    def test_simulate_cascade_unique_removed_nodes(self, client, valid_district):
+    def test_simulate_cascade_unique_removed_nodes(self, client_with_auth, valid_district):
         """
         Тест уникальности удаляемых узлов.
 
         Проверяет, что один и тот же узел не удаляется дважды.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 5}
         )
@@ -780,49 +780,49 @@ class TestCascadeRoutes:
         removed_ids = [step["removed_node_id"] for step in response.json()["steps"]]
         assert len(removed_ids) == len(set(removed_ids))
 
-    def test_simulate_cascade_district_not_found(self, client):
+    def test_simulate_cascade_district_not_found(self, client_with_auth):
         """
         Тест каскадной симуляции для несуществующего района.
 
         Проверяет, что запрос к несуществующему району возвращает 404.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": "nonexistent_xyz", "steps": 5}
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_simulate_cascade_invalid_steps_zero(self, client, valid_district):
+    def test_simulate_cascade_invalid_steps_zero(self, client_with_auth, valid_district):
         """
         Тест валидации: steps не может быть 0.
 
         Проверяет, что запрос с steps=0 возвращает ошибку валидации.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 0}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_simulate_cascade_invalid_steps_exceeds_max(self, client, valid_district):
+    def test_simulate_cascade_invalid_steps_exceeds_max(self, client_with_auth, valid_district):
         """
         Тест валидации: steps не может превышать 100.
 
         Проверяет, что запрос с steps=101 возвращает ошибку валидации.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 101}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-    def test_simulate_cascade_default_steps(self, client, valid_district):
+    def test_simulate_cascade_default_steps(self, client_with_auth, valid_district):
         """
         Тест дефолтного значения steps.
 
         Проверяет, что запрос без поля steps использует дефолт (10).
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district}
         )
@@ -831,40 +831,40 @@ class TestCascadeRoutes:
 
         assert data["total_steps"] == 10
 
-    def test_simulate_cascade_calculation_time_positive(self, client, valid_district):
+    def test_simulate_cascade_calculation_time_positive(self, client_with_auth, valid_district):
         """
         Тест положительного времени расчета.
 
         Проверяет, что calculation_time_ms является неотрицательным числом.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 3}
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["calculation_time_ms"] >= 0
 
-    def test_simulate_cascade_district_field_in_response(self, client, valid_district):
+    def test_simulate_cascade_district_field_in_response(self, client_with_auth, valid_district):
         """
         Тест соответствия района в ответе запрошенному.
 
         Проверяет, что поле district в ответе совпадает с переданным.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 3}
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["district"] == valid_district
 
-    def test_simulate_cascade_with_removed_nodes(self, client, valid_district, graph_node_ids):
+    def test_simulate_cascade_with_removed_nodes(self, client_with_auth, valid_district, graph_node_ids):
         """
         Тест каскада с предварительно удалёнными узлами.
 
         Удалённые узлы не должны появляться в шагах каскада.
         """
         removed = [graph_node_ids["node1"]]
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 3, "removed_nodes": removed}
         )
@@ -872,13 +872,13 @@ class TestCascadeRoutes:
         cascade_ids = [s["removed_node_id"] for s in response.json()["steps"]]
         assert graph_node_ids["node1"] not in cascade_ids
 
-    def test_simulate_cascade_with_added_nodes_and_edges(self, client, valid_district, graph_node_ids):
+    def test_simulate_cascade_with_added_nodes_and_edges(self, client_with_auth, valid_district, graph_node_ids):
         """
         Тест каскада с добавленными узлами и рёбрами.
 
         Проверяет, что запрос с added_nodes/added_edges проходит успешно.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={
                 "district": valid_district,
@@ -890,11 +890,11 @@ class TestCascadeRoutes:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["total_steps"] == 3
 
-    def test_simulate_cascade_steps_100_allowed(self, client, valid_district):
+    def test_simulate_cascade_steps_100_allowed(self, client_with_auth, valid_district):
         """
         Тест валидации: steps=100 допустимо.
         """
-        response = client.post(
+        response = client_with_auth.post(
             "/api/graph/simulate-cascade",
             json={"district": valid_district, "steps": 100}
         )

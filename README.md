@@ -75,35 +75,44 @@ REDIS_URL=redis://localhost:6379/0
 ENABLE_CACHE=true
 ```
 
-### 3. Запустить инфраструктуру (PostgreSQL + Redis + Prometheus + Grafana)
+### 3. Запустить всё
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-### 4. Запустить backend
+Первый запуск собирает образы (~2–3 минуты). Последующие запуски — мгновенно.
+
+| Сервис | URL |
+|--------|-----|
+| Приложение | http://localhost:3000 |
+| API / Swagger | http://localhost:8000/docs |
+
+---
+
+### Режим разработки (без Docker для бэкенда и фронтенда)
+
+Если нужен hot reload при разработке — запускай только инфраструктуру через Docker, а бэкенд и фронтенд вручную:
 
 ```bash
+# Инфраструктура
+docker compose up -d postgres redis
+
+# Backend
 cd backend
 python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 alembic upgrade head
 python run.py
-```
 
-Backend доступен на [http://localhost:8000](http://localhost:8000).  
-Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs).
-
-### 5. Запустить frontend
-
-```bash
+# Frontend (в отдельном терминале)
 cd frontend
 npm install
 npm run dev
 ```
 
-Приложение доступно на [http://localhost:5173](http://localhost:5173).
+Приложение в режиме разработки: [http://localhost:5173](http://localhost:5173).
 
 ---
 

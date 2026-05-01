@@ -9,14 +9,19 @@ import app.cache as cache_module
 
 
 @pytest.fixture(scope="function")
-def client_with_redis(redis_setup, db_session):
-    """Client с реальным Redis из testcontainers."""
+def client_with_redis(redis_setup, db_session, test_user):
+    """Client с реальным Redis и аутентификацией."""
+    from app.services.auth_service import AuthService
+
     def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
 
+    access_token = AuthService(db_session).create_access_token(test_user.id)
+
     with TestClient(app) as client:
+        client.cookies.set("access_token", access_token)
         yield client
 
     app.dependency_overrides.clear()
@@ -147,7 +152,7 @@ class TestGraphCacheIntegration:
         steps2 = [(s["step"], s["removed_node_id"]) for s in r2.json()["steps"]]
         assert steps1 == steps2
 
-    def test_cache_works_without_redis(self, db_session):
+    def test_cache_works_without_redis(self, db_session, test_user):
         """
         При недоступном Redis приложение работает нормально (graceful fallback).
         """
@@ -160,7 +165,11 @@ class TestGraphCacheIntegration:
 
         app.dependency_overrides[get_db] = override_get_db
 
+        from app.services.auth_service import AuthService
+        access_token = AuthService(db_session).create_access_token(test_user.id)
+
         with TestClient(app) as client:
+            client.cookies.set("access_token", access_token)
             response = client.post("/api/graph/calculate", json={
                 "district": "tverskoy",
                 "removed_nodes": [], "removed_edges": [],
