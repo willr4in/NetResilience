@@ -32,6 +32,7 @@ function NodeLayer({ nodes, addedNodes }: Props) {
 
   useEffect(() => {
     if (!focusTarget) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHighlightedId(focusTarget.id)
     const t = setTimeout(() => setHighlightedId(null), 2500)
     return () => clearTimeout(t)
@@ -41,10 +42,14 @@ function NodeLayer({ nodes, addedNodes }: Props) {
   const betweenness = analysisResult?.metrics.betweenness ?? {}
   const isolatedNodes = analysisResult?.metrics.isolated_nodes ?? []
 
-  const handleNodeClick = (nodeId: string, _isAdded: boolean) => {
+  const handleNodeClick = (nodeId: string, isAdded: boolean) => {
     if (mapMode === 'delete') {
-      toggleNode(nodeId)
+      // Добавленные узлы удаляются через undo, не через toggle
+      if (!isAdded) toggleNode(nodeId)
     } else if (mapMode === 'add-edge') {
+      // Нельзя тянуть ребро к/от удалённого узла
+      const isRemoved = removedNodes.includes(nodeId) || cascadeRemovedIds.has(nodeId)
+      if (isRemoved) return
       if (!selectedNodeId) {
         setSelectedNodeId(nodeId)
       } else if (selectedNodeId === nodeId) {

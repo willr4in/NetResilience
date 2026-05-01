@@ -1,11 +1,11 @@
 import client from './client'
 import type { Scenario, ScenarioCreate, ScenarioUpdate, ScenarioList } from '../types/scenario'
 
-export const getScenarios = (page = 1, size = 10) =>
-  client.get<ScenarioList>('/scenarios', { params: { page, size } })
+export const getScenarios = (page = 1, size = 10, search = '', sort_by = 'created_at') =>
+  client.get<ScenarioList>('/scenarios', { params: { page, size, search, sort_by } })
 
-export const getPublicScenarios = (page = 1, size = 10) =>
-  client.get<ScenarioList>('/scenarios/public', { params: { page, size } })
+export const getPublicScenarios = (page = 1, size = 10, search = '', sort_by = 'created_at') =>
+  client.get<ScenarioList>('/scenarios/public', { params: { page, size, search, sort_by } })
 
 export const getScenario = (id: number) =>
   client.get<Scenario>(`/scenarios/${id}`)

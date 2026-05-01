@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import axios from 'axios'
 import { useGraphStore } from '../store/graphStore'
 import { getGraph, calculate, simulateCascade, findRoute } from '../api/graph'
 import { isAbortError } from '../api/client'
@@ -17,12 +18,13 @@ import MetricsPanel from '../components/panels/MetricsPanel'
 import CriticalNodes from '../components/panels/CriticalNodes'
 import CascadePanel from '../components/panels/CascadePanel'
 import RoutePanel from '../components/panels/RoutePanel'
-import LoadingSpinner from '../components/common/LoadingSpinner'
+import MapSkeleton from '../components/common/MapSkeleton'
 import { exportScenarioPdf } from '../utils/exportPdf'
 import type { GraphSchema } from '../types/graph'
+import type { Scenario } from '../types/scenario'
 
 export default function MapPage() {
-  const { setGraph, setAnalysisResult, setCascadeResult, setCalculating, setLoading, setScenarioMeta } = useGraphStore()
+  const { setGraph, setAnalysisResult, setCascadeResult, setCalculating, setLoading, setScenarioMeta, applyScenario } = useGraphStore()
   const removedNodes = useGraphStore((s) => s.removedNodes)
   const removedEdges = useGraphStore((s) => s.removedEdges)
   const addedNodes = useGraphStore((s) => s.addedNodes)
@@ -53,12 +55,9 @@ export default function MapPage() {
         const { data } = await getGraph(DISTRICT)
         setGraphSchema(data)
         setGraph(data.metadata.district, data.nodes, data.edges)
-        const scenario = location.state?.scenario
+        const scenario = location.state?.scenario as Scenario | undefined
         if (scenario) {
-          scenario.removed_nodes.forEach((id: string) => useGraphStore.getState().toggleNode(id))
-          scenario.removed_edges.forEach(([s, t]: string[]) => useGraphStore.getState().toggleEdge(s, t))
-          scenario.added_nodes.forEach((n: any) => useGraphStore.getState().addNode(n))
-          scenario.added_edges.forEach(([s, t]: string[]) => useGraphStore.getState().addEdge(s, t))
+          applyScenario(scenario)
           setScenarioMeta(scenario.name, scenario.description ?? null)
 
           setCalculating(true)
@@ -152,6 +151,14 @@ export default function MapPage() {
   const handleSave = async () => {
     if (!graphSchema || !saveName.trim() || isSaving) return
     setSaveError('')
+    if (saveName.trim().length < 3) {
+      setSaveError('Название должно содержать минимум 3 символа')
+      return
+    }
+    if (saveName.trim().length > 100) {
+      setSaveError('Название не должно превышать 100 символов')
+      return
+    }
     setIsSaving(true)
     try {
       await createScenario({
@@ -166,10 +173,10 @@ export default function MapPage() {
       setSaveModalOpen(false)
       setSaveName('')
       setSaveDescription('')
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail
+    } catch (err) {
+      const detail = axios.isAxiosError(err) ? err.response?.data?.detail : undefined
       if (Array.isArray(detail)) {
-        setSaveError(detail.map((e: any) => e.msg).join(', '))
+        setSaveError(detail.map((e: Record<string, unknown>) => String(e.msg)).join(', '))
       } else if (typeof detail === 'string') {
         setSaveError(detail)
       } else {
@@ -201,11 +208,7 @@ export default function MapPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <LoadingSpinner text="Загрузка графа..." />
-      </div>
-    )
+    return <MapSkeleton />
   }
 
   return (

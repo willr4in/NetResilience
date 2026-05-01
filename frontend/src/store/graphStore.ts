@@ -87,6 +87,12 @@ interface GraphState {
   applyCascadeToScenario: () => void
   setScenarioMeta: (name: string, description: string | null) => void
   clearScenarioMeta: () => void
+  applyScenario: (s: {
+    removed_nodes: string[]
+    removed_edges: string[][]
+    added_nodes: { id: string; label: string; lat: number; lon: number; node_type?: string }[]
+    added_edges: string[][]
+  }) => void
 }
 
 export const useGraphStore = create<GraphState>((set, get) => ({
@@ -205,4 +211,12 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
   setScenarioMeta: (name, description) => set({ scenarioMeta: { name, description } }),
   clearScenarioMeta: () => set({ scenarioMeta: null }),
+  applyScenario: (s) => set({
+    removedNodes: s.removed_nodes,
+    removedEdges: s.removed_edges,
+    addedNodes: s.added_nodes.map((n) => ({ ...n, node_type: n.node_type ?? 'other' })),
+    addedEdges: s.added_edges,
+    addHistory: [],
+    isDirty: true,
+  }),
 }))

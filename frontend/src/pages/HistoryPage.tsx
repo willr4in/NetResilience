@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { getHistory } from '../api/history'
 import type { HistoryRecord, ActionType } from '../types/history'
 import { formatDateTime } from '../utils/formatDate'
@@ -17,6 +17,15 @@ const ACTION_COLORS: Record<ActionType, string> = {
   delete: 'bg-red-100 text-red-500',
   view: 'bg-gray-100 text-gray-600',
 }
+
+const FILTER_COLORS: Record<ActionType, string> = {
+  calculate: 'bg-blue-600 text-white',
+  save: 'bg-green-600 text-white',
+  delete: 'bg-red-500 text-white',
+  view: 'bg-gray-500 text-white',
+}
+
+const ALL_ACTIONS: ActionType[] = ['save', 'delete', 'view']
 
 function HistoryDetails({ record }: { record: HistoryRecord }) {
   const d = record.details as Record<string, unknown>
@@ -68,9 +77,7 @@ function HistoryItem({ record }: { record: HistoryRecord }) {
       <span className={`text-xs font-medium px-2 py-1 rounded-md shrink-0 ${ACTION_COLORS[record.action]}`}>
         {ACTION_LABELS[record.action]}
       </span>
-
       <HistoryDetails record={record} />
-
       {record.calculation_time_ms != null && (
         <span className="text-xs text-gray-400 shrink-0">
           {record.calculation_time_ms.toFixed(0)} мс
@@ -86,11 +93,13 @@ export default function HistoryPage() {
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
+  const [search, setSearch] = useState('')
+  const [activeAction, setActiveAction] = useState<ActionType | ''>('')
 
-  const fetchHistory = async (p: number) => {
+  const fetchHistory = useCallback(async (p: number, q: string, a: ActionType | '') => {
     setIsLoading(true)
     try {
-      const { data } = await getHistory(p)
+      const { data } = await getHistory(p, 10, a, q)
       setRecords(data.items)
       setTotal(data.total)
       setPage(data.page)
@@ -98,19 +107,61 @@ export default function HistoryPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { fetchHistory(1) }, [])
+  useEffect(() => {
+    const t = setTimeout(() => fetchHistory(1, search, activeAction), search ? 400 : 0)
+    return () => clearTimeout(t)
+  }, [search, activeAction])
+
+  const toggleAction = (a: ActionType) => {
+    setActiveAction((prev) => (prev === a ? '' : a))
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-xl font-semibold text-gray-800 mb-6">История действий</h1>
+      <h1 className="text-xl font-semibold text-gray-800 mb-4">История действий</h1>
+
+      <div className="flex flex-col gap-3 mb-6">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск по названию сценария…"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <div className="flex gap-2 flex-wrap">
+          {ALL_ACTIONS.map((a) => (
+            <button
+              key={a}
+              onClick={() => toggleAction(a)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                activeAction === a
+                  ? FILTER_COLORS[a]
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {ACTION_LABELS[a]}
+            </button>
+          ))}
+          {activeAction && (
+            <button
+              onClick={() => setActiveAction('')}
+              className="text-xs text-gray-400 hover:text-gray-600 px-2"
+            >
+              Сбросить
+            </button>
+          )}
+        </div>
+      </div>
 
       {isLoading && <LoadingSpinner />}
 
       {!isLoading && records.length === 0 && (
         <div className="text-sm text-gray-400 py-12 text-center">
-          История пуста. Начните работу с графом на странице карты.
+          {search || activeAction
+            ? 'Ничего не найдено. Попробуйте изменить фильтры.'
+            : 'История пуста. Начните работу с графом на странице карты.'}
         </div>
       )}
 
@@ -125,7 +176,7 @@ export default function HistoryPage() {
           {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
             <button
               key={p}
-              onClick={() => fetchHistory(p)}
+              onClick={() => fetchHistory(p, search, activeAction)}
               className={`w-8 h-8 text-sm rounded-lg transition-colors ${
                 p === page
                   ? 'bg-blue-600 text-white'

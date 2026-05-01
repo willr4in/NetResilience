@@ -40,6 +40,7 @@ function EdgeLayer({ edges, nodeMap, addedEdges, extendedNodeMap }: Props) {
           <Fragment key={`${edge.source}-${edge.target}`}>
             <Polyline
               positions={positions}
+
               pathOptions={{
                 color: isRemoved ? '#ef4444' : '#64748b',
                 weight: isRemoved ? 2 : 1.5,

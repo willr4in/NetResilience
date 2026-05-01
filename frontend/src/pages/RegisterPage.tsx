@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import axios from 'axios'
 import { register, getMe } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 import { ROUTES } from '../constants/routes'
@@ -18,6 +19,12 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault()
     setError('')
+    if (!name.trim()) { setError('Введите имя'); return }
+    if (!surname.trim()) { setError('Введите фамилию'); return }
+    if (!email) { setError('Введите email'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Введите корректный email'); return }
+    if (!password) { setError('Введите пароль'); return }
+    if (password.length < 8) { setError('Пароль должен содержать минимум 8 символов'); return }
     setIsLoading(true)
 
     try {
@@ -25,15 +32,16 @@ export default function RegisterPage() {
       const { data: user } = await getMe()
       setUser(user)
       navigate(ROUTES.MAP)
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail
+    } catch (err) {
+      const detail = axios.isAxiosError(err) ? err.response?.data?.detail : undefined
       if (Array.isArray(detail)) {
-        const messages = detail.map((e: any) => {
-          const field = e.loc?.[e.loc.length - 1]
+        const messages = detail.map((e: Record<string, unknown>) => {
+          const loc = e.loc as string[] | undefined
+          const field = loc?.[loc.length - 1]
           const fieldLabels: Record<string, string> = {
             name: 'Имя', surname: 'Фамилия', email: 'Email', password: 'Пароль',
           }
-          const label = fieldLabels[field] ?? field
+          const label = (typeof field === 'string' && fieldLabels[field]) || field
           return `${label}: ${e.msg}`
         })
         setError(messages.join('\n'))
@@ -52,7 +60,7 @@ export default function RegisterPage() {
       <div className="bg-white rounded-xl shadow-md p-8 w-full max-w-md">
         <h1 className="text-2xl font-semibold text-gray-800 mb-6">Регистрация</h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-sm text-gray-600 mb-1">Имя</label>

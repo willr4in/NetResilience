@@ -18,8 +18,8 @@ const restoreSession = async () => {
   try {
     const { data } = await axios.get('/api/users/me', { withCredentials: true })
     useAuthStore.getState().setUser(data)
-  } catch (e: any) {
-    if (e?.response?.status === 401) {
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status === 401) {
       try {
         await axios.post('/api/auth/refresh', {}, { withCredentials: true })
         const { data } = await axios.get('/api/users/me', { withCredentials: true })

@@ -1,18 +1,18 @@
 export interface Scenario {
   id: number
-  user_id: number
+  user_id: number | null
   name: string
   description: string | null
   district: string
   removed_nodes: string[]
   removed_edges: string[][]
-  added_nodes: { id: string; label: string; lat: number; lon: number }[]
+  added_nodes: { id: string; label: string; lat: number; lon: number; node_type?: string }[]
   added_edges: string[][]
   metrics: Record<string, unknown> | null
   author_name: string | null
   hits: number
   created_at: string
-  last_used_at: string
+  last_used_at: string | null
 }
 
 export interface ScenarioCreate {
@@ -21,7 +21,7 @@ export interface ScenarioCreate {
   district: string
   removed_nodes: string[]
   removed_edges: string[][]
-  added_nodes: { id: string; label: string; lat: number; lon: number }[]
+  added_nodes: { id: string; label: string; lat: number; lon: number; node_type?: string }[]
   added_edges: string[][]
 }
 

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from 'sonner'
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -29,6 +30,15 @@ client.interceptors.response.use(
     const isAuthEndpoint = original.url?.includes('/auth/login') || original.url?.includes('/auth/refresh')
 
     if (error.response?.status !== 401 || original._retry || isAuthEndpoint) {
+      if (!axios.isCancel(error) && error?.code !== 'ERR_CANCELED') {
+        const status = error.response?.status
+        // 422 — ошибка валидации, компонент показывает её инлайн
+        if (status !== 422) {
+          const msg = error.response?.data?.detail
+          const text = typeof msg === 'string' ? msg : 'Ошибка сети. Попробуйте ещё раз.'
+          toast.error(text)
+        }
+      }
       return Promise.reject(error)
     }
 

@@ -36,7 +36,7 @@ export interface CascadeRequest {
   steps: number
   removed_nodes?: string[]
   removed_edges?: string[][]
-  added_nodes?: Record<string, any>[]
+  added_nodes?: { id: string; label: string; lat: number; lon: number; node_type?: string }[]
   added_edges?: string[][]
 }
 
@@ -48,7 +48,7 @@ export interface RouteRequest {
   to_lon: number
   removed_nodes?: string[]
   removed_edges?: string[][]
-  added_nodes?: Record<string, any>[]
+  added_nodes?: { id: string; label: string; lat: number; lon: number; node_type?: string }[]
   added_edges?: string[][]
 }
 
