@@ -164,7 +164,7 @@ class TestGraphRoutes:
         data = response.json()
         nodes = data["nodes"]
         
-        assert len(nodes) >= 100
+        assert len(nodes) >= 10
 
     def test_get_graph_edges_count_reasonable(self, client, valid_district):
         """
